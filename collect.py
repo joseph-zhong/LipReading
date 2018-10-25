@@ -2,8 +2,6 @@ import youtube_dl
 
 PLAYLIST = "https://www.youtube.com/playlist?list=PLiZxWe0ejyv8CSMylrxb6Nx4Ii2RHbu_j"
 
-reader = WebVTTReader()
-
 opts = {
     "outtmpl": "data/%(id)s.%(ext)s",
     "subtitleslangs": ["en"],
