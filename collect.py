@@ -1,5 +1,4 @@
 import youtube_dl
-from pycaption import WebVTTReader
 
 PLAYLIST = "https://www.youtube.com/playlist?list=PLiZxWe0ejyv8CSMylrxb6Nx4Ii2RHbu_j"
 
