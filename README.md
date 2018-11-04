@@ -27,7 +27,7 @@ output.
 
 #### Vision Pipeline
 
-```json
+```javascript
 Video -> Frames       -> Face Bounding Box Detection      -> Face Landmarking    
 Repr. -> (n, y, x, c) -> (n, (box=1, y_i, x_i, w_i, h_i)) -> (n, (idx=68, y, x))   
 ```
