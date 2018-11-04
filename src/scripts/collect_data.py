@@ -10,6 +10,7 @@ opts = {
     "subtitlesformat": "vtt",
     "format": "mp4/bestvideo[height>=720]",
     "keepvideo": True,
+    "ignoreerrors": True,
     "postprocessors": [
         {
             'key': 'FFmpegExtractAudio',
