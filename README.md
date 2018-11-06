@@ -43,7 +43,7 @@ Repr. -> (n, y, x, c) -> (n, (box=1, y_i, x_i, w_i, h_i)) -> (n, (idx=68, y, x))
 
 ## **TODO** 
 
-- [ ] Download Data
+- [x] Download Data (943 videos)
 - [ ] Build Vision Pipeline (1 week)
 - [ ] Build NLP Pipeline (1 week)
 - [ ] Build Loss Fn and Training Pipeline (2 weeks)
