@@ -150,6 +150,83 @@ face-reconstruction).
 
 ##### `dlib` Setup
 
+This can be a little bit tricky since it's a C++ library relying on `cmake` and `CUDA`, three things that can be
+quite painful to get working together as a team but when they do the results are great.
+
+###### GPU Setup
+
+If you're using a machine with CUDA available, you should follow these instructions
+
+Make sure CUDA and CuDNN are installed, this can be quite time-consuming.
+
+```bash
+# Installing CUDA 9.0 and cuDNN7.0.5 for CUDA 9.0 for Tensorflow 1.9.0 support
+# For more information see: https://developer.nvidia.com/cuda-90-download-archive?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1604&target_type=debnetworki
+
+# Installing CUDA 9.0.
+sudo dpkg -i cuda-repo-ubuntu1604_9.0.176-1_amd64.deb
+sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+sudo apt-get update
+sudo apt-get install cuda-9-0
+
+# Installing cuDNN7.0.5.
+sudo dpkg -i libcudnn7_7.0.5.15-1+cuda9.0_amd64.deb
+sudo dpkg -i libcudnn7-dev_7.0.5.15-1+cuda9.0_amd64.deb
+sudo dpkg -i libcudnn7-doc_7.0.5.15-1+cuda9.0_amd64.deb
+
+# Test cuDNN7.0.5 installation correctness.
+cp -ur /usr/src/cudnn_samples_v7/ tests
+cd tests/cudnn_samples_v7/mnistCUDNN
+make clean && make && ./mnistCUDNN
+```
+
+If cuDNN is properly installed and running on your Linux system, you will see a message similar to the following:
+```text
+Test passed!
+```
+
+###### `dlib` Python Setup
+
+If you're not using the GPU, you can simply run
+```bash
+pip3 install dlib
+```
+
+Othewrwise you will need to compile `dlib` using the following
+
+```bash
+git clone https://github.com/davisking/dlib.git
+cd dlib
+python3 setup.py install --user
+```
+
+**Important:** make sure you see the following output
+```text
+...
+-- Found CUDA: /usr/local/cuda (found suitable version "9.0", minimum required is "7.5") 
+-- Looking for cuDNN install...
+-- Found cuDNN: /usr/lib/x86_64-linux-gnu/libcudnn.so
+-- Building a CUDA test project to see if your compiler is compatible with CUDA...
+-- Checking if you have the right version of cuDNN installed.
+-- Try OpenMP C flag = [-fopenmp]
+-- Performing Test OpenMP_FLAG_DETECTED
+-- Performing Test OpenMP_FLAG_DETECTED - Success
+-- Try OpenMP CXX flag = [-fopenmp]
+-- Performing Test OpenMP_FLAG_DETECTED
+-- Performing Test OpenMP_FLAG_DETECTED - Success
+-- Found OpenMP: -fopenmp  
+-- Enabling CUDA support for dlib.  DLIB WILL USE CUDA
+...
+```
+
+This last line is critical. Otherwise either CUDA or CuDNN is not installed correctly.
+
+If you're using a virtualenv, you will need to copy the installed `.so` to your `virtualenv` 
+```bash
+cd build
+cp -r lib.linux-x86_64-3.5/ </path/to/vituralenv/.../lib/python3.x/site-packages/>
+```
+
 We will need a few trained models for face detection, 2d landmarking, etc, conveniently provided by Davis King.
 
 ```bash
@@ -158,6 +235,36 @@ cd ./data/weights
 git clone https://github.com/davisking/dlib-models dlib
 cd dlib
 bzip2 -dk *.bz2
+```
+
+###### Testing `dlib`
+
+Now let us verify the installation, run the following: We should expect inference time per image to be on the 
+order of less than 0.3s per image. It will be over 10x slower on CPU (5-10s/inference).  
+
+```python
+import sys
+import dlib
+import time
+
+if len(sys.argv) < 3:
+    print(
+        "Call this program like this:\n"
+        "   ./cnn_face_detector.py mmod_human_face_detector.dat ../examples/faces/*.jpg\n"
+        "You can get the mmod_human_face_detector.dat file from:\n"
+        "    http://dlib.net/files/mmod_human_face_detector.dat.bz2")
+    exit()
+
+cnn_face_detector = dlib.cnn_face_detection_model_v1(sys.argv[1])
+for f in sys.argv[2:]:
+    print("Processing file: {}".format(f))
+    img = dlib.load_rgb_image(f)
+    # The 1 in the second argument indicates that we should upsample the image
+    # 1 time.  This will make everything bigger and allow us to detect more
+    # faces.
+    ts = time.time()
+    dets = cnn_face_detector(img, 1)
+    print("Time elapsed: ", time.time() - ts)
 ```
 
 ##### `PRNet` Setup
