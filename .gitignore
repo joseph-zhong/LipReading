@@ -1,7 +1,7 @@
 # gitignore
 
 ## Data
-./data/
+/data/
 
 ## venv
 bin/
@@ -10,6 +10,11 @@ lib64
 pyvenv.cfg
 share/
 pip-selfcheck.json
+include/
+
+## Python
+__pycache__/
 
 ## IDE
 .idea/
+
