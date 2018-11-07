@@ -13,4 +13,4 @@ def get_secs(time_str):
   ```
   """
   h, m, s = time_str.split(':')
-  return int(h) * 3600 + int(m) * 60 + int(s)
+  return float(h) * 3600 + float(m) * 60 + float(s)
