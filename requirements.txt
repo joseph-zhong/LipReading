@@ -7,6 +7,7 @@ decorator==4.3.0
 gast==0.2.0
 grpcio==1.16.0
 h5py==2.8.0
+imageio==2.4.1
 Keras-Applications==1.0.6
 Keras-Preprocessing==1.0.5
 kiwisolver==1.0.1
