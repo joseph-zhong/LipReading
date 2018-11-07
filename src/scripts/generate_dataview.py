@@ -39,8 +39,8 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
 
 
 def generate_dataview(
-    inp="data/raw/StephenColbert/",
-    outp_dir="data/datasets/StephenColbert/",
+    inp="data/raw/StephenColbert/all",
+    outp_dir="data/datasets/StephenColbert/all",
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
@@ -114,12 +114,15 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
   dataview = []
   video_reader = _video.VideoReader(vid_path)
 
+  cap_count = 0
   for (start, end), cap in captions.items():
     # REVIEW josephz: How to apply timedelay here?
     start_frame = video_reader.get_frame_idx(start) - timedelay
     end_frame = video_reader.get_frame_idx(end) + timedelay
-    _getSharedLogger().info("Computing landmarks for '%d' frames", end_frame - start_frame)
+    _getSharedLogger().info("\tCaption (%4d/%4d): Computing landmarks for '%d' frames",
+      cap_count, len(captions) - 1, end_frame - start_frame)
     frames = video_reader.genFrames(start_frame, end_frame)
+    cap_count += 1
 
     for i, frame in enumerate(frames):
       ts = time.time()
@@ -132,10 +135,10 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
         dataview.append(data)
         _getSharedLogger().info("\tJob (%4d/%4d): Generated data example for caption (start=%d, end=%d), "
                                 "took '%0.3f' seconds",
-          i, video_reader.getNumFrames() - 1, start, end, time.time() - ts)
+          start_frame + i, video_reader.getNumFrames() - 1, start, end, time.time() - ts)
       else:
         _getSharedLogger().warning("\tJob (%4d/%4d): No face or landmarks detected for caption (start=%d, end=%d)",
-          i, video_reader.getNumFrames() - 1, start, end)
+          start_frame + i, video_reader.getNumFrames() - 1, start, end)
   return dataview
 
 def main(args):
