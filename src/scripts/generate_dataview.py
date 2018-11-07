@@ -93,6 +93,7 @@ def generate_dataview(
       if force or not os.path.isfile(dst_path):
         _getSharedLogger().info("\tJob (%4d/%4d): Writing dataview to '%s'",
           idx, len(vid_paths) - 1, dst_path)
+        _util.mkdirP(os.path.dirname(dst_path))
         np.save(dst_path, dataview)
 
   te = time.time()
