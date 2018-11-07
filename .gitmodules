@@ -1,0 +1,3 @@
+[submodule "extern/PRNet"]
+	path = extern/PRNet
+	url = https://github.com/YadiraF/PRNet.git
