@@ -52,6 +52,9 @@ class VideoReader:
   def get_frame_idx(self, seconds):
     return int(seconds * self._fps)
 
+  def getNumFrames(self):
+    return self._vid_len
+
   def genFrames(self, lo, hi):
     # assert isinstance(self.buf, np.ndarray) and self.buf.ndim == 1 and len(self.buf) == self._seq_len
     # assert isinstance(self.cache, collections.deque) and self.cache.maxlen == len(self.cache) == self._seq_len
@@ -61,7 +64,8 @@ class VideoReader:
     # REVIEW josephz: Can this be improved with a buffer?
     assert self.lo <= lo <= hi
     self.lo = lo
-    yield (self._reader.get_data(x) for x in range(lo, hi))
+    for x in range(lo, hi):
+      yield self._reader.get_data(x)
 
   def _updateCache(self, lo, hi):
     raise NotImplementedError
