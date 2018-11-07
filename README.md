@@ -43,12 +43,17 @@ Repr. -> (n, y, x, c) -> (n, (box=1, y_i, x_i, w_i, h_i)) -> (n, (idx=68, y, x))
 
 0. Clone this repository and install the requirements. We will be using `python3`.
  
-From now please make sure you run python scripts, or setup your `PYTHONPATH` from `./src`
+Please make sure you run python scripts, setup your `PYTHONPATH` at `./`, as well as a workspace env variable.
 
 ```bash
 git clone --recurse-submodules -j8 git@github.com:joseph-zhong/LipReading.git 
-# (optional, setup venv) cd LipReading; python3  -m venv . 
+# (optional, setup venv) cd LipReading; python3  -m venv .
+cd LipReading 
 pip3 install -r requirements.txt
+pwd
+# Copy the following into your `~/.bashrc`
+# export PYTHONPATH="$PYTHONPATH:/path/to/LipReading/" 
+# export LIP_READING_WS_PATH="/path/to/LipReading/"
 ```
 
 ### External Requirements
@@ -117,13 +122,27 @@ Thankfully the authors released the source code with an MIT License. Check out t
 Each of these projects will require some pre-trained weights for their respective models (face-detection, 3D 
 face-reconstruction).
 
+##### `dlib` Setup
+
+We will need a few trained models for face detection, 2d landmarking, etc, conveniently provided by Davis King.
+
+```bash
+mkdir -p ./data/weights
+cd ./data/weights
+git clone https://github.com/davisking/dlib-models dlib
+cd dlib
+bzip2 -dk *.bz2
+```
+
+##### `PRNet` Setup
+
 Download the PRNet weights from [GDrive](https://drive.google.com/file/d/1UoE-XuW1SDLUjZmJPkIZ1MLxvQFgmTFH/view?usp=sharing)
 and place them into `./extern/PRNet/Data/net-data`.
 
 If you've installed the package requirements above, then test and make sure that PRNet will run
 
 ```bash
-cd ./extern/PRNet
+cd ./src/models/extern/prnet
 python run_basics.py 
 ```
 
@@ -156,7 +175,7 @@ either by unique videos (first 900 vs last 100), or perhaps just segments of vid
 
 | idx  | video_fname | captions_fname |  start, end  | landmark tensor       | caption text         |
 | ---- | ----------- | -------------- | ------------ | --------------------- | -------------------- |
-| `i`  | `...mp4`    | `...vtt`       | `(s_i, e_i)` | `(frames, lmks, yx)`  | `"str0, str1, ...,"` |
+| `i`  | `...mp4`    | `...vtt`       | `(s_i, e_i)` | `(frames, lmks, yxz)` | `"str0, str1, ...,"` |
 
 
 
