@@ -10,14 +10,12 @@ Relies on `dlib` for face-detection and `PRNet + PyTorch` for landmarking.
 """
 
 import os
-import dlib
-import imageio
-import collections
 
+import time
+import dlib
 import numpy as np
 
 import src.utils.utility as _util
-
 from src.models.face.prnet import PRN
 
 _mouth = slice(48, 68)
@@ -83,8 +81,10 @@ def get_3d_landmarks(img, is_dlib=True, gpuIds="0"):
   # import matplotlib.pyplot as plt
   # plt.imshow(img)
   # plt.show()
-
+  _getSharedLogger().info("Computing Position Map...")
+  ts = time.time()
   pos_map = _getSharedPrn().process(img)
+  _getSharedLogger().info("Computing Position Map...Done! Took '%0.3f' seconds", time.time() - ts)
   if pos_map is None:
     return None
   lmks3d = _getSharedPrn(is_dlib=is_dlib, gpuIds=gpuIds).get_landmarks(pos_map)
