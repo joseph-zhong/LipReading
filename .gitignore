@@ -9,4 +9,7 @@ lib/
 lib64
 pyvenv.cfg
 share/
+pip-selfcheck.json
 
+## IDE
+.idea/
