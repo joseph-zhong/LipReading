@@ -31,8 +31,8 @@ def texture_editing(prn, args):
     # change part of texture(for data augumentation/selfie editing. Here modify eyes for example)
     if Mode == 0: 
         # load eye mask
-        uv_face_eye = imread('Data/uv-data/uv_face_eyes.png', as_grey=True)/255. 
-        uv_face = imread('Data/uv-data/uv_face.png', as_grey=True)/255.
+        uv_face_eye = imread('Data/uv/uv_face_eyes.png', as_grey=True)/255.
+        uv_face = imread('Data/uv/uv_face.png', as_grey=True)/255.
         eye_mask = (abs(uv_face_eye - uv_face) > 0).astype(np.float32)
 
         # texture from another image or a processed texture

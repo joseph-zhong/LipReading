@@ -4,8 +4,6 @@ from skimage.io import imread, imsave
 from skimage.transform import estimate_transform, warp
 from time import time
 
-from extern.PRNet.predictor import PosPrediction
-
 class PRN:
     ''' Joint 3D Face Reconstruction and Dense Alignment with Position Map Regression Network
     Args:
@@ -29,14 +27,15 @@ class PRN:
         self.pos_predictor = PosPrediction(self.resolution_inp, self.resolution_op)
         prn_path = os.path.join(prefix, 'Data/net-data/256_256_resfcn256_weight')
         if not os.path.isfile(prn_path + '.data-00000-of-00001'):
+            print(prn_path)
             print("please download PRN trained model first.")
             exit()
         self.pos_predictor.restore(prn_path)
 
         # uv file
-        self.uv_kpt_ind = np.loadtxt(prefix + '/Data/uv-data/uv_kpt_ind.txt').astype(np.int32) # 2 x 68 get kpt
-        self.face_ind = np.loadtxt(prefix + '/Data/uv-data/face_ind.txt').astype(np.int32) # get valid vertices in the pos map
-        self.triangles = np.loadtxt(prefix + '/Data/uv-data/triangles.txt').astype(np.int32) # ntri x 3
+        self.uv_kpt_ind = np.loadtxt(prefix + '/Data/uv/uv_kpt_ind.txt').astype(np.int32) # 2 x 68 get kpt
+        self.face_ind = np.loadtxt(prefix + '/Data/uv/face_ind.txt').astype(np.int32) # get valid vertices in the pos map
+        self.triangles = np.loadtxt(prefix + '/Data/uv/triangles.txt').astype(np.int32) # ntri x 3
         
         self.uv_coords = self.generate_uv_coords()        
 
