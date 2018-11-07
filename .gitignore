@@ -1,7 +1,7 @@
 # gitignore
 
 ## Data
-data/
+./data/
 
 ## venv
 bin/
