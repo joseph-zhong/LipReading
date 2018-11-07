@@ -131,7 +131,7 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
         dataview.append(data)
         _getSharedLogger().info("\tJob (%4d/%4d): Generated data example for caption (start=%d, end=%d), "
                                 "took '%0.3f' seconds",
-          i, len(frames)-1, start, end, time.time() - ts)
+          i, video_reader.getNumFrames() - 1, start, end, time.time() - ts)
 
   return dataview
 
