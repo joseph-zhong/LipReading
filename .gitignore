@@ -16,6 +16,9 @@ include/
 ## Python
 __pycache__/
 
+## Jupyter
+etc/
+
 ## IDE
 .idea/
 
