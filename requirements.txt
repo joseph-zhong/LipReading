@@ -1,7 +1,6 @@
 absl-py==0.6.1
 astor==0.7.1
 beautifulsoup4==4.4.1
-bleach==1.5.0
 cloudpickle==0.6.1
 cssutils==1.0.2
 cycler==0.10.0
