@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Uility functions.
@@ -10,8 +10,7 @@ import logging
 
 DEFAULT_VERBOSITY = 4
 
-_cachedImDir = None
-_cachedIm2Dir = None
+_ws_dir = None
 
 _logger = None
 _LOGGING_FORMAT = "[%(asctime)s %(levelname)5s %(filename)s %(funcName)s:%(lineno)s] %(message)s"
@@ -25,6 +24,12 @@ def getLogger(name, level=logging.DEBUG, verbosity=DEFAULT_VERBOSITY):
   logger.setLevel(level)
   return logger
 
+def _getUtilityLogger():
+  global _logger
+  if _logger is None:
+    _logger = getLogger("Utility")
+  return _logger
+
 def _getPathFromEnv(envVar):
   path = os.getenv(envVar, None)
   assert path is not None, \
@@ -32,11 +37,23 @@ def _getPathFromEnv(envVar):
     "please check project installation and ~/.bashrc".format(envVar)
   return path
 
-def _getUtilityLogger():
-  global _logger
-  if _logger is None:
-    _logger = getLogger("Utility")
-  return _logger
+def getWsDir():
+  global _ws_dir
+  if _ws_dir is None:
+    _ws_dir = _getPathFromEnv("LIP_READING_WS_PATH")
+  return _ws_dir
+
+def getRelDataPath(*relPath):
+  return os.path.join(getWsDir(), "data", *relPath)
+
+def getRelRawPath(*relPath):
+  return getRelDataPath("raw", *relPath)
+
+def getRelWeightsPath(*relPath):
+  return getRelDataPath("weights", *relPath)
+
+def getRelDatasetsPath(*relPath):
+  return getRelDataPath("datasets", *relPath)
 
 def mkdirP(path):
   if not os.path.exists(path):
