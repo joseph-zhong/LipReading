@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import youtube_dl
 
+# Stephen Colbert Monologues.
 PLAYLIST = "https://www.youtube.com/playlist?list=PLiZxWe0ejyv8CSMylrxb6Nx4Ii2RHbu_j"
 
 opts = {
-    "outtmpl": "data/%(id)s.%(ext)s",
+    "outtmpl": "data/raw/StephenColbert/%(id)s.%(ext)s",
     "subtitleslangs": ["en"],
     "writesubtitles": True,
     "subtitlesformat": "vtt",
