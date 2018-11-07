@@ -50,25 +50,26 @@ class VideoReader:
     self._fps = fps
 
   def get_frame_idx(self, seconds):
-    return seconds * self._fps
+    return int(seconds * self._fps)
 
   def genFrames(self, lo, hi):
-    assert isinstance(self.buf, np.ndarray) and self.buf.ndim == 1 and len(self.buf) == self._seq_len
-    assert isinstance(self.cache, collections.deque) and self.cache.maxlen == len(self.cache) == self._seq_len
-
-    self._updateCache(lo, hi)
+    # assert isinstance(self.buf, np.ndarray) and self.buf.ndim == 1 and len(self.buf) == self._seq_len
+    # assert isinstance(self.cache, collections.deque) and self.cache.maxlen == len(self.cache) == self._seq_len
+    # self._updateCache(lo, hi)
 
     # Populate ndarray vector with cache.
-    for i, frame in enumerate(self.cache):
-      self.buf[i] = frame
-    return self.buf
+    # REVIEW josephz: Can this be improved with a buffer?
+    assert self.lo <= lo <= hi
+    self.lo = lo
+    return (self._reader.get_data(x) for x in range(lo, hi))
 
   def _updateCache(self, lo, hi):
-    assert isinstance(self.cache, collections.deque) and self.cache.maxlen == self._seq_len
-    assert self.lo <= lo < hi < self._vid_len
-
-    # The subsequent sequence may jump ahead. If so, we only wish to load the minimum number of
-    # frames to catch-up since our previous sequence.
-    assert lo + len(self.cache) <= hi + self._seq_len
-    cacheRange = range(max(lo + len(self.cache), hi), hi + self._seq_len)
-    self.cache.extend(self._reader.get_data(x) for x in cacheRange)
+    raise NotImplementedError
+    # assert isinstance(self.cache, collections.deque) and self.cache.maxlen == self._seq_len
+    # assert self.lo <= lo < hi < self._vid_len
+    #
+    # # The subsequent sequence may jump ahead. If so, we only wish to load the minimum number of
+    # # frames to catch-up since our previous sequence.
+    # assert lo + len(self.cache) <= hi + self._seq_len
+    # cacheRange = range(max(lo + len(self.cache), hi), hi + self._seq_len)
+    # self.cache.extend(self._reader.get_data(x) for x in cacheRange)

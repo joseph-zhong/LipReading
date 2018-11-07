@@ -20,13 +20,14 @@ import glob
 import os
 import sys
 
+import src.utils.data.video as _video
 import src.utils.data.caption as _caption
 import src.utils.data.face as _face
 
 import src.utils.cmd_line as _cmd
 import src.utils.utility as _util
 
-
+_logger = None
 def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
   global _logger
   if _logger is None:
@@ -75,8 +76,13 @@ def generate_dataview(
 
     # Extract face-dots.
     landmark_seqs = []
+    video_reader = _video.VideoReader(vid_path)
+
     for (start, end), cap in captions.items():
-      landmark_seq = _face.get_landmarks(vid_path, start, end)
+      start_frame = video_reader.get_frame_idx(start)
+      end_frame = video_reader.get_frame_idx(end)
+      frames = video_reader.genFrames(start_frame, end_frame)
+      landmark_seq = _face.get_landmarks(frames)
       landmark_seqs.append(landmark_seq)
 
 
