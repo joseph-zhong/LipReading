@@ -40,7 +40,7 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
 
 def generate_dataview(
     inp="data/raw/StephenColbert/",
-    outp_dir="datasets",
+    outp_dir="data/datasets/StephenColbert/",
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
@@ -120,8 +120,8 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
     _getSharedLogger().info("Computing landmarks for '%d' frames", end_frame - start_frame)
     frames = video_reader.genFrames(start_frame, end_frame)
 
-    ts = time.time()
     for i, frame in enumerate(frames):
+      ts = time.time()
       assert len(frame.shape) == 3
       lmks = _face.get_3d_landmarks(frame)
       # REVIEW josephz: How else to check that most of the landmarks are valid? Could also check the size of the
@@ -132,7 +132,9 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
         _getSharedLogger().info("\tJob (%4d/%4d): Generated data example for caption (start=%d, end=%d), "
                                 "took '%0.3f' seconds",
           i, video_reader.getNumFrames() - 1, start, end, time.time() - ts)
-
+      else:
+        _getSharedLogger().warning("\tJob (%4d/%4d): No face or landmarks detected for caption (start=%d, end=%d)",
+          i, video_reader.getNumFrames() - 1, start, end)
   return dataview
 
 def main(args):
