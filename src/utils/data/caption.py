@@ -32,7 +32,7 @@ def extract_captions(cap_fname, lang='en-US'):
   """ Reads a list of captions and returns an ordered dictionary of {(start_time, end_time) -> "caption"}
   with time in units of seconds.
 
-  :param cap_fname: VTT subtitle file to read from.
+  :param cap_fname: VTT subtitle file to read from. Produces Caption sets with text, and times in microseconds.
   """
   assert os.path.isfile(cap_fname)
   _getSharedLogger().info("Reading captions from '%s'", cap_fname)
@@ -50,11 +50,11 @@ def extract_captions(cap_fname, lang='en-US'):
     captions = caption_set.get_captions(lang=lang)
     assert len(captions) > 0
 
-  _getSharedLogger().info("Detected '%s'", len(captions))
+  _getSharedLogger().info("Detected '%s' captions...", len(captions))
   for c in captions:
     cap_raw = c.get_text()
-    start = float(c.start) / 1000
-    end = float(c.end) / 1000
+    start = _time.micros_to_sec(c.start)
+    end = _time.micros_to_sec(c.end)
     res[(start, end)] = cap_raw.strip()
   assert len(res) == len(captions)
   return res
