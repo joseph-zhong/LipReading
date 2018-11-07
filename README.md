@@ -49,7 +49,6 @@ Please make sure you run python scripts, setup your `PYTHONPATH` at `./`, as wel
 git clone --recurse-submodules -j8 git@github.com:joseph-zhong/LipReading.git 
 # (optional, setup venv) cd LipReading; python3  -m venv .
 cd LipReading 
-pip3 install -r requirements.txt
 pwd
 # Copy the following into your `~/.bashrc`
 # export PYTHONPATH="$PYTHONPATH:/path/to/LipReading/" 
@@ -57,6 +56,33 @@ pwd
 ```
 
 ### External Requirements
+
+#### Basic requirements
+
+##### Python Dependencies
+
+This is primarily dependencies with `tensorflow` vs `tensorflow-gpu`, `scipy` and `imageio`.
+
+```bash
+pip3 install -r requirements.txt
+```
+
+##### System Requirements
+
+- `ffmpeg`
+Can easily be installed on MacOS via:
+```bash
+brew install ffmpeg
+ffmpeg -version
+```
+
+or on Ubuntu 16.04/18.04
+```bash
+sudo add-apt-repository ppa:jonathonf/ffmpeg-3
+sudo apt-get update
+sudo apt-get install ffmpeg libav-tools x264 x265
+ffmpeg -version
+```
 
 #### `pycaption`: Caption Reading 
 
@@ -137,7 +163,7 @@ bzip2 -dk *.bz2
 ##### `PRNet` Setup
 
 Download the PRNet weights from [GDrive](https://drive.google.com/file/d/1UoE-XuW1SDLUjZmJPkIZ1MLxvQFgmTFH/view?usp=sharing)
-and place them into `./extern/PRNet/Data/net-data`.
+and place them into `./src/models/extern/prnet/Data/net-data`.
 
 If you've installed the package requirements above, then test and make sure that PRNet will run
 
@@ -151,6 +177,8 @@ You should see `*.obj` 3D face model files which you can open in Preview on MacO
 the `xyz` 3D coordinates of the 68 face landmarks in pixel space for the face.
 
 You can see further examples of how to use this algorithm in [`./extern/PRNet/demo.py`](extern/PRNet/demo.py)
+
+Once the api is verified, move the contents of the model and `uv` map weights to `./data/weights/prnet` 
 
 1. Download the Data
 

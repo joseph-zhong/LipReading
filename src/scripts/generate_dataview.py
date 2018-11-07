@@ -120,7 +120,8 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
     _getSharedLogger().info("Computing landmarks for '%d' frames", end_frame - start_frame)
     frames = video_reader.genFrames(start_frame, end_frame)
 
-    for frame in frames:
+    ts = time.time()
+    for i, frame in enumerate(frames):
       assert len(frame.shape) == 3
       lmks = _face.get_3d_landmarks(frame)
       # REVIEW josephz: How else to check that most of the landmarks are valid? Could also check the size of the
@@ -128,6 +129,10 @@ def _get_captioned_landmarks(vid_path, captions, timedelay=0):
       if lmks is not None:
         data = np.array([(start, end), lmks, cap])
         dataview.append(data)
+        _getSharedLogger().info("\tJob (%4d/%4d): Generated data example for caption (start=%d, end=%d), "
+                                "took '%0.3f' seconds",
+          i, len(frames)-1, start, end, time.time() - ts)
+
   return dataview
 
 def main(args):
