@@ -82,7 +82,6 @@ def prune_and_filter_captions(captions, patterns=None, conditions=None, union=Tr
   :param patterns: Regex patterns to prune caption tokens.
   :param conditions: Boolean conditions to filter captions.
   """
-
   if conditions is None:
     conditions = _conditions
   if patterns is None:
@@ -91,11 +90,14 @@ def prune_and_filter_captions(captions, patterns=None, conditions=None, union=Tr
 
   # Remove matched patterns within captions.
   for k, cap_raw in captions.items():
-    captions[k] = regex.sub('', cap_raw)
+    cap_raw = cap_raw.replace('\n', ' ')
+    cap_raw = cap_raw.replace('>>', ' ')
+    cap_raw = cap_raw.replace('Stephen: ', ' ')
+    captions[k] = regex.sub('', cap_raw).strip()
 
   # Filter captions based on caption condition filters.
   fn = any if union else all
   res = collections.OrderedDict(
     (k, cap) for k, cap in captions.items()
-      if fn(cond(cap) for cond in conditions))
+      if not fn(cond(cap) for cond in conditions))
   return res
