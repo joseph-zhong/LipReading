@@ -53,6 +53,9 @@ class PRN:
 
     self.uv_coords = self.generate_uv_coords()
 
+    # Cache Position map.
+    self.pos = None
+
   def generate_uv_coords(self):
     resolution = self.resolution_op
     uv_coords = np.meshgrid(range(resolution), range(resolution))
@@ -96,20 +99,21 @@ class PRN:
       image = np.tile(image[:, :, np.newaxis], [1, 1, 3])
 
     if image_info is not None:
-      if np.max(image_info.shape) > 4:  # key points to get bounding box
-        kpt = image_info
-        if kpt.shape[0] > 3:
-          kpt = kpt.T
-        left = np.min(kpt[0, :])
-        right = np.max(kpt[0, :])
-        top = np.min(kpt[1, :])
-        bottom = np.max(kpt[1, :])
-      else:  # bounding box
-        bbox = image_info
-        left = bbox[0]
-        right = bbox[1]
-        top = bbox[2]
-        bottom = bbox[3]
+      # REVIEW josephz: Deprecated behavior, accepting landmarks to infer tight bbox.
+      # if np.max(image_info.shape) > 4:  # key points to get bounding box
+      #   kpt = image_info
+      #   if kpt.shape[0] > 3:
+      #     kpt = kpt.T
+      #   left = np.min(kpt[0, :])
+      #   right = np.max(kpt[0, :])
+      #   top = np.min(kpt[1, :])
+      #   bottom = np.max(kpt[1, :])
+      # else:  # bounding box
+      bbox = image_info
+      left = bbox[0]
+      right = bbox[1]
+      top = bbox[2]
+      bottom = bbox[3]
       old_size = (right - left + bottom - top) / 2
       center = np.array([right - (right - left) / 2.0, bottom - (bottom - top) / 2.0])
       size = int(old_size * 1.6)
@@ -151,7 +155,9 @@ class PRN:
     vertices = np.vstack((vertices[:2, :], z))
     pos = np.reshape(vertices.T, [self.resolution_op, self.resolution_op, 3])
 
-    return pos
+    # Cache position map.
+    self.pos = pos
+    return pos, image
 
   def get_landmarks(self, pos):
     '''
