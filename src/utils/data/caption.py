@@ -18,6 +18,11 @@ import src.utils.utility as _util
 
 _patterns = (
     r"\(.*\)",
+    r"\<.*\>",
+    r"\[.*\]",
+    r"\{.*\}",
+    r"Stephen:",
+    r">>",
 )
 
 _conditions = (
@@ -91,8 +96,7 @@ def prune_and_filter_captions(captions, patterns=None, conditions=None, union=Tr
   # Remove matched patterns within captions.
   for k, cap_raw in captions.items():
     cap_raw = cap_raw.replace('\n', ' ')
-    cap_raw = cap_raw.replace('>>', ' ')
-    cap_raw = cap_raw.replace('Stephen: ', ' ')
+    cap_raw = cap_raw.lower()
     captions[k] = regex.sub('', cap_raw).strip()
 
   # Filter captions based on caption condition filters.

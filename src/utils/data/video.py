@@ -19,6 +19,9 @@ class VideoReader:
     """ The VideoReader serves a generator of frame-sequences as needed. To increase performance, sequential
     frame access is enforced, and frames are cached into a buffer to allow for quicker repeated and
     sequential accesses within the allocated buffer.
+    TODO: Buffer implementation. Could be implemented by taking a cache_size param for max(caption_size) and
+    keeping track lo/hi indices for when to update. See `_updateCache` for draft.
+
     Note memory usage may grow significantly with high-resolution video or large cache sizes, calculated by the
     following formula:
     ```
@@ -64,8 +67,9 @@ class VideoReader:
     # REVIEW josephz: Can this be improved with a buffer?
     assert self.lo <= lo <= hi
     self.lo = lo
-    for x in range(lo, hi):
-      yield self._reader.get_data(x)
+    return [self._reader.get_data(x) for x in range(lo, hi)]
+    # for x in range(lo, hi):
+    #   yield self._reader.get_data(x)
 
   def _updateCache(self, lo, hi):
     raise NotImplementedError

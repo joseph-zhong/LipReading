@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Uility functions.
+Uility functions in logging and IO.
 """
 
 import os
@@ -87,3 +87,4 @@ def mv(src, dst, mkdirMode=True, force=False):
     shutil.copy(src, dst)
   else:
     shutil.move(src, dst)
+
