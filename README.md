@@ -12,10 +12,19 @@ signals as input to map to characters and words.
 
 ## Overview
 
+- [Architecture](#architecture): High level pipeline
+  - [Vision Pipeline](#vision-pipeline)
+  - [NLP Pipeline](#nlp-pipeline)
+- [Get Started](#get-started): Quick setup and installation instructions
+  - [External Requirements](#external-requirements): Overview on dependencies
+    - [ffmpeg](#ffmpeg-installation)
+    - [Pycaption](#pycaption:-caption-reading)
+    - [dlib](#dlib-setup)
+    - [PRNet](#prnet-setup)
+- [TODO](#**todo**)
 - [Other Resources](#other-resources): Collection of reading material, and
   projects
-- [Get Started](#get-started): Quick setup
-
+  
 ## Architecture
 
 There are two primary interconnected pipelines: a "vision" pipeline for extracting
@@ -23,16 +32,16 @@ the face and lip features from video frames, along with a "nlp-inspired"
 pipeline for temporally correlating the sequential lip features into the final
 output.
 
-### Pipeline Representations: A Dive into Tensor Dimensionalities
+Here's a quick dive into tensor dimensionalities
 
-#### Vision Pipeline
+### Vision Pipeline
 
 ```javascript
 Video -> Frames       -> Face Bounding Box Detection      -> Face Landmarking    
 Repr. -> (n, y, x, c) -> (n, (box=1, y_i, x_i, w_i, h_i)) -> (n, (idx=68, y, x))   
 ```
 
-#### NLP Pipeline
+### NLP Pipeline
 
 ```javascript
  -> Letters  ->  Words    -> Language Model 
@@ -57,17 +66,14 @@ pwd
 
 ### External Requirements
 
-#### Basic requirements
+The primary requirements are as follows:
 
-##### Python Dependencies
+- `ffmpeg`
+- `pycaption`
+- `dlib`
+- `pytorch` and `tensorflow1.4+`
 
-This is primarily dependencies with `tensorflow` vs `tensorflow-gpu`, `scipy` and `imageio`.
-
-```bash
-pip3 install -r requirements.txt
-```
-
-##### System Requirements
+#### ffmpeg Installation
 
 - `ffmpeg`
 Can easily be installed on MacOS via:
@@ -84,7 +90,15 @@ sudo apt-get install ffmpeg libav-tools x264 x265
 ffmpeg -version
 ```
 
-#### `pycaption`: Caption Reading 
+#### Python Dependencies
+
+This is primarily dependencies with `tensorflow` vs `tensorflow-gpu`, `scipy` and `imageio`.
+
+```bash
+pip3 install -r requirements.txt
+```
+
+##### pycaption: Caption Reading 
 
 Install `pycaption`, an open-source Python-based subtitle reader/writer tool. See the [Github](https://github.com/pbs/pycaption)
 This will allow us to read and process the `webVTT` caption files.
@@ -95,7 +109,7 @@ pip3 install git+https://github.com/pbs/pycaption.git
 
 Basic usage will be something along the lines of 
 
-```python3
+```python
 import pycaption
 reader = pycaption.WebVTTReader()
 fname = 'data/raw/StephenColbert/ZfHPLpXKfWg.en.vtt'
@@ -148,7 +162,7 @@ Thankfully the authors released the source code with an MIT License. Check out t
 Each of these projects will require some pre-trained weights for their respective models (face-detection, 3D 
 face-reconstruction).
 
-##### `dlib` Setup
+##### dlib Setup
 
 This can be a little bit tricky since it's a C++ library relying on `cmake` and `CUDA`, three things that can be
 quite painful to get working together as a team but when they do the results are great.
@@ -267,7 +281,7 @@ for f in sys.argv[2:]:
     print("Time elapsed: ", time.time() - ts)
 ```
 
-##### `PRNet` Setup
+##### PRNet Setup
 
 Download the PRNet weights from [GDrive](https://drive.google.com/file/d/1UoE-XuW1SDLUjZmJPkIZ1MLxvQFgmTFH/view?usp=sharing)
 and place them into `./src/models/extern/prnet/Data/net-data`.
@@ -308,18 +322,18 @@ Thus, during cross-validation or testing time, we will be able to separate the t
 either by unique videos (first 900 vs last 100), or perhaps just segments of videos (first `k` samples vs last 
 `n-k` samples of each video).
 
-| idx  | video_fname | captions_fname |  start, end  | landmark tensor       | caption text         |
-| ---- | ----------- | -------------- | ------------ | --------------------- | -------------------- |
-| `i`  | `...mp4`    | `...vtt`       | `(s_i, e_i)` | `(frames, lmks, yxz)` | `"str0, str1, ...,"` |
-
-
-
+| idx  |  start, end  |  face frames     |  landmark seq tensor  |  caption text |
+| ---- | ------------ | ---------------- | --------------------- | ------------- |
+| `i`  | `(s_i, e_i)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `"str...."`   |
 
 ## **TODO** 
 
-- [x] Download Data (943 videos)
-- [ ] Build Vision Pipeline (1 week)
-- [ ] Build NLP Pipeline (1 week)
+A high level overview of some TODO items. For more project details please see the 
+Github [project](https://github.com/joseph-zhong/LipReading/projects/2)
+
+- [x] Download Data (926 videos)
+- [ ] Build Vision Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669202)
+- [ ] Build NLP Pipeline (1 week) [todo]()
 - [ ] Build Loss Fn and Training Pipeline (2 weeks)
 - [ ] Train :train: and Ship :ship: 
 
@@ -367,6 +381,3 @@ potentially helpful starting points for the project.
 
 - Lip Reading Datasets (Oxford)
   - http://www.robots.ox.ac.uk/~vgg/data/lip_reading/
-
-
-
