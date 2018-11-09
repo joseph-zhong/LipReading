@@ -12,6 +12,7 @@ signals as input to map to characters and words.
 
 ## Overview
 
+- [TODO](#**todo**)
 - [Architecture](#architecture): High level pipeline
   - [Vision Pipeline](#vision-pipeline)
   - [NLP Pipeline](#nlp-pipeline)
@@ -21,9 +22,19 @@ signals as input to map to characters and words.
     - [Pycaption](#pycaption:-caption-reading)
     - [dlib](#dlib-setup)
     - [PRNet](#prnet-setup)
-- [TODO](#**todo**)
 - [Other Resources](#other-resources): Collection of reading material, and
   projects
+  
+## **TODO** 
+
+A high level overview of some TODO items. For more project details please see the 
+Github [project](https://github.com/joseph-zhong/LipReading/projects/2)
+
+- [x] Download Data (926 videos)
+- [ ] Build Vision Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669202)
+- [ ] Build NLP Pipeline (1 week) [todo]()
+- [ ] Build Loss Fn and Training Pipeline (2 weeks)
+- [ ] Train :train: and Ship :ship: 
   
 ## Architecture
 
@@ -322,20 +333,17 @@ Thus, during cross-validation or testing time, we will be able to separate the t
 either by unique videos (first 900 vs last 100), or perhaps just segments of videos (first `k` samples vs last 
 `n-k` samples of each video).
 
-| idx  |  start, end  |  face frames     |  landmark seq tensor  |  caption text |
-| ---- | ------------ | ---------------- | --------------------- | ------------- |
-| `i`  | `(s_i, e_i)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `"str...."`   |
+A dataview is a dense table of data input and label pairs.
+For our purposes, we will generate a table for each video-caption pair as follows:
 
-## **TODO** 
+| idx  |  start, end  |  raw landmark seq     |  face frames     |  face landmark seq    | face vtx seq         | caption text |
+| ---- | ------------ | --------------------- | ---------------- | --------------------- | -------------------- | ------------ |
+| `i`  | `(s_i, e_i)` | `(frames, lmks, yxz)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
-A high level overview of some TODO items. For more project details please see the 
-Github [project](https://github.com/joseph-zhong/LipReading/projects/2)
+Note, the face landmarks are landmarks with coordinates relative to the face frame, which are take from the raw
+landmarks which are coordinates relative to the full frame.
 
-- [x] Download Data (926 videos)
-- [ ] Build Vision Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669202)
-- [ ] Build NLP Pipeline (1 week) [todo]()
-- [ ] Build Loss Fn and Training Pipeline (2 weeks)
-- [ ] Train :train: and Ship :ship: 
+There are 68 canonical face landmarks, and 45128 total face vertices in the point cloud.
 
 ## Other Resources
 
