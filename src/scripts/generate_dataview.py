@@ -8,7 +8,7 @@ This reads the available video and caption files available and generates the cor
 A dataview is a dense table of data input and label pairs.
 For our purposes, we will generate a table for each video-caption pair as follows:
 
-| idx  |  start, end  |  faces           |  face_lmk_seq         | face_vtx_seq         | cap          |
+| idx  |  start, end  |  face_seq        |  face_lmk_seq         | face_vtx_seq         | cap          |
 | ---- | ------------ | ---------------- | --------------------- | -------------------- | ------------ |
 | `i`  | `(s_i, e_i)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
@@ -48,8 +48,8 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
   return _logger
 
 def generate_dataview(
-    inp="StephenColbert/nano1",
-    outp_dir="StephenColbert/nano1",
+    inp="StephenColbert/nano2",
+    outp_dir="StephenColbert/nano2",
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
@@ -144,17 +144,16 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
   assert os.path.isfile(vid_path)
   assert isinstance(captions, collections.OrderedDict) and len(captions) > 0
 
-  dataview = collections.OrderedDict((col, []) for col in ('s_e', 'faces', 'face_lmks_seq', 'face_vtx_seq', 'cap'))
+  dataview = collections.OrderedDict((col, []) for col in ('s_e', 'face_lmk_seq', 'face_vtx_seq', 'cap'))
   video_reader = _video.VideoReader(vid_path)
 
   # Iterate through each caption and extract the corresponding frames in (start, end).
   for cap_idx, s_e in enumerate(captions.keys()):
     start, end = s_e
     cap = captions[s_e]
-    # raw_lmks = []
     face_lmks = []
     face_vtx = []
-    faces = []
+    # faces = []
 
     # REVIEW josephz: How to apply timedelay here?
     start_frame = video_reader.get_frame_idx(start)
@@ -200,8 +199,7 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
             start_frame + i, video_reader.getNumFrames() - 1, start_frame + i)
         else:
           # Otherwise accumulate landmarks and faces for the caption.
-          # raw_lmks.append(frame_lmks)
-          faces.append(frame_face)
+          # faces.append(frame_face)
           face_lmks.append(frame_face_lmks)
           face_vtx.append(frame_face_vtx)
 
@@ -224,11 +222,9 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
 
     # Accumulate lmks pair into dataview.
     dataview['s_e'].append(s_e)
-    dataview['faces'].append(faces)
-    # dataview['raw_lmks'].append(raw_lmks)
-    dataview['face_lmk_seq'].append(face_lmks)
-    dataview['face_vtx_seq'].append(face_vtx)
     dataview['cap'].append(cap)
+    dataview['face_lmk_seq'].append(np.array(face_lmks))
+    dataview['face_vtx_seq'].append(np.array(face_vtx))
 
     # Visualize caption-lmks pair.
     # REVIEW josephz: This is really absolutely shit and should be killed.

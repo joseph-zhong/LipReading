@@ -96,9 +96,10 @@ def prune_and_filter_captions(captions, patterns=None, conditions=None, union=Tr
 
   # Remove matched patterns within captions.
   for k, cap_raw in captions.items():
+    cap_raw = regex.sub('', cap_raw).strip()
     cap_raw = cap_raw.replace('\n', ' ')
     cap_raw = cap_raw.lower()
-    captions[k] = regex.sub('', cap_raw).strip()
+    captions[k] = cap_raw
 
   # Filter captions based on caption condition filters.
   fn = any if union else all
