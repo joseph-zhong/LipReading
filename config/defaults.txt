@@ -1,0 +1,16 @@
+--dataset=StephenColbert/nano
+--batch=10
+--num_workers=1
+--hidden_size=800
+--hidden_layers=5
+--rnn_type=gru
+--epochs=70
+--cuda=True
+--learning_rate=3e-4
+--momentum=0.9
+--max_norm=400
+--anneal=1.1
+--silent=True
+--checkpoint=True
+--tensorboard=True
+--continue_from=0
