@@ -10,6 +10,7 @@ Caption utilities.
 import os
 import re
 import collections
+import unicodedata
 
 import pycaption
 
@@ -21,9 +22,8 @@ _patterns = (
     r"\<.*\>",
     r"\[.*\]",
     r"\{.*\}",
-    r"Stephen:",
+    r"stephen:",
     r">>",
-    r"[\.!,?]",
 )
 
 _conditions = (
@@ -85,7 +85,7 @@ def prune_and_filter_captions(captions, patterns=None, conditions=None, union=Tr
   ```
 
   :param captions: Dictionary of captions to prune and filter.
-  :param patterns: Regex patterns to prune caption tokens.
+  :param patterns: Regex patterns to prune caption tokens. Should be lowercase only.
   :param conditions: Boolean conditions to filter captions.
   """
   if conditions is None:
@@ -99,6 +99,7 @@ def prune_and_filter_captions(captions, patterns=None, conditions=None, union=Tr
     cap_raw = regex.sub('', cap_raw).strip()
     cap_raw = cap_raw.replace('\n', ' ')
     cap_raw = cap_raw.lower()
+    cap_raw = unicodedata.normalize(u'NFKD', cap_raw).encode('ascii', 'ignore').decode('utf8')
     captions[k] = cap_raw
 
   # Filter captions based on caption condition filters.
