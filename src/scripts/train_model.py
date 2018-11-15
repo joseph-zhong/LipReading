@@ -29,10 +29,6 @@ import src.data.data_loader as _data_loader
 # See https://github.com/baidu-research/warp-ctc
 from warpctc_pytorch import CTCLoss
 
-# josephz: Baidu's 'fast' implementation of CTC.
-# See https://github.com/baidu-research/warp-ctc
-from warpctc_pytorch import CTCLoss
-
 _logger = None
 
 def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
@@ -364,4 +360,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-
