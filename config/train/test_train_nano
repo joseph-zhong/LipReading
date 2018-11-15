@@ -1,10 +1,11 @@
---dataset=StephenColbert/nano
---batch=10
+--dataset=StephenColbert/test_train_nano
+--epochs=70
+--batch=1
+--train_split=0.5
 --num_workers=1
 --hidden_size=800
 --hidden_layers=5
 --rnn_type=gru
---epochs=70
 --cuda
 --learning_rate=3e-4
 --momentum=0.9

@@ -44,13 +44,44 @@ class FrameCaptionDataset(_data.Dataset):
     # If this cannot fit into memory, we will need to load fnames at `__getitem__` time.
     # try:
     # Gather lmk_seq/caption batch pairs across videos.
-    dataview = np.concatenate([np.load(fname) for fname in frame_paths], axis=0)
-    captions = np.concatenate([np.load(fname) for fname in caption_paths], axis=0)
+    # This will gather the dataview:
+    #   (num_captions, [seq_len_i, num_pts, 3]) to (N, [num_captions_i, {seq_len_j, num_pts, 3}])
+    # along with the associated captions (N, [num_captions_i, "str..."]),
+    # for 'N' number of videos, and 'num_captions' for the length of each caption set.
+    # REVIEW josephz: this is a temporary HORRIBLE workaround for another HORRIBLE bug in `generate_dataview.py`
+    assert len(frame_paths) == len(caption_paths)
+    dataview = []
+    captions = []
+    for frame_fname, cap_fname in zip(frame_paths, caption_paths):
+      data = np.load(frame_fname)
+      cap = np.load(cap_fname)
+
+      data_tmp = []
+      caps_tmp = []
+      for c, d in zip(cap, data):
+        if len(d.shape) == 3:
+          caps_tmp.append(c)
+          data_tmp.append(d)
+      assert all(len(x.shape) == 3 for x in data_tmp)
+      dataview.append(data_tmp)
+      captions.append(caps_tmp)
+    dataview = np.concatenate(dataview, axis=0)
+    captions = np.concatenate(captions, axis=0)
+
+    print('dataset length', len(dataview))
+    print('first seq_len', len(dataview[0]))
+    print('first cap_len', len(captions[0]))
+
+    assert len(dataview.shape) == 1, "dataview.shape: '{}'".format(dataview.shape)
+    assert all(len(x.shape) == 3 for x in dataview)
+
+    assert len(captions.shape) == 1
+    assert all(isinstance(x, str) for x in captions)
+    assert len(dataview) == len(captions)
     # except:
     #   _getSharedLogger().warning(
     #     "Failed to load dataview, DataSet will read data from disk instead...")
     #   raise NotImplementedError()
-
 
     # Cache all rows.
     self.labels_map = dict([(labels[i], i) for i in range(len(labels))])
@@ -63,12 +94,23 @@ class FrameCaptionDataset(_data.Dataset):
     self.frame_paths = frame_paths
 
   def __getitem__(self, index):
+    """ Returns the frame_seq and caption at index.
+
+    :param index:
+    :return: Returns a tuple with the input data and caption:
+      - frame_seq of shape [seq_len, num_pts, 3].
+      - parsed_cap of shape [cap_len,].
+    """
+
     frames = self.dataview[index]
     caption = self.captions[index]
     parsed_cap = self.parse_caption(caption)
 
     frames = torch.FloatTensor(frames)
     parsed_cap = torch.IntTensor(parsed_cap)
+
+    assert len(frames.shape) == 3 and frames.shape[2] == 3
+    assert len(parsed_cap.shape) == 1
     return frames, parsed_cap
 
   def __len__(self):
@@ -101,6 +143,7 @@ def _collate_fn(batch):
 
   :param batch: The complete batch of data samples to be collated. In particular, this is a list of frames and captions,
     each of shape (seq_len, num_pts, pt_dim), (num_chars)
+  :return
   """
   # Pad based on the maximum seq_len.
   def pad(vec, seq_len, dim=0):
@@ -111,7 +154,6 @@ def _collate_fn(batch):
 
     pad_size = list(vec.shape)
     pad_size[dim] = seq_len - vec.size(dim)
-    print("pad: pad_size:", pad_size)
     res = torch.cat([vec, torch.zeros(*pad_size)], dim=dim)
     return res
 
@@ -119,22 +161,47 @@ def _collate_fn(batch):
   batch = sorted(batch, key=lambda sample: sample[0].size(0), reverse=True)
   assert all(len(x) == 2 for x in batch)
   frames, caps = zip(*batch)
+  # REVIEW josephz: Frames should be of size (batch_len=1, seq_len, 68, 3),
+  # but are currently just (seq_len, 68, 3).
+  # print('len(frames)', len(frames), 'len(caps)', len(caps))
 
+  # Get max len for poadding. We will use this to zero-pad the ends.
   max_seqlength = frames[0].size(0)
-  lengths = [len(x) for x in caps]
 
-  inps = []
-  targets = torch.zeros(len(caps), max(lengths)).long()
+  # Get minibatch size, make sure it's not 0.
   assert 0 < len(frames) == len(caps)
-  for i, (x, y) in enumerate(zip(frames, caps)):
-    # Pad input.
-    padded_inp = pad(x, max_seqlength, dim=0)
-    inps.append(padded_inp)
+  # REVIEW josephz: This needs to be fixed as well. I think it's correct....
+  # need to check on more data.
+  minibatch_size = len(frames)
 
-    # Pad label.
-    targets[i, :len(y)] = y
+  # Accumulate batch here. Because we are dealing with variable seq_len data,
+  # we need to also track the 'actual length', or the length of data that is
+  # not 'padding'.
+  inps = []
+  targets = []
+  input_percentages = torch.FloatTensor(minibatch_size)
+
+  target_lengths = torch.IntTensor(minibatch_size)
+  # REVIEW josephz: This needs to be fixed for batch!=1.
+  for i in range(minibatch_size):
+    frame_seq = frames[i]
+    caption = caps[i]
+    assert isinstance(frame_seq, torch.Tensor)
+    assert len(frame_seq.shape) == 3 and frame_seq.shape[1:] == (68, 3)
+
+    # Pad input, and track its length.
+    # REVIEW josephz: need to fix.
+    padded_inp = pad(frame_seq, max_seqlength, dim=0)
+    inps.append(padded_inp)
+    seq_length = len(padded_inp)
+    input_percentages[i] = seq_length / float(max_seqlength)
+
+    # Track caption lengths.
+    targets.extend(caption)
+    target_lengths[i] = len(caption)
   inps = torch.stack(inps, dim=0)
-  return inps, targets
+  targets = torch.IntTensor(targets)
+  return inps, targets, input_percentages, target_lengths
 
 # REVIEW josephz: Is this also over-kill?
 class BucketingSampler(_data.Sampler):

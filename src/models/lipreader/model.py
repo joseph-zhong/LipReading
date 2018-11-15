@@ -41,45 +41,6 @@ class SequenceWise(nn.Module):
         tmpstr += ')'
         return tmpstr
 
-
-class MaskConv(nn.Module):
-    def __init__(self, seq_module):
-        """
-        Adds padding to the output of the module based on the given lengths. This is to ensure that the
-        results of the model do not change when batch sizes change during inference.
-        Input needs to be in the shape of (BxCxDxT)
-        :param seq_module: The sequential module containing the conv stack.
-        """
-        super(MaskConv, self).__init__()
-        self.seq_module = seq_module
-
-    def forward(self, x, lengths):
-        """
-        :param x: The input of size BxCxDxT
-        :param lengths: The actual length of each sequence in the batch
-        :return: Masked output from the module
-        """
-        for module in self.seq_module:
-            x = module(x)
-            mask = torch.ByteTensor(x.size()).fill_(0)
-            if x.is_cuda:
-                mask = mask.cuda()
-            for i, length in enumerate(lengths):
-                length = length.item()
-                if (mask[i].size(2) - length) > 0:
-                    mask[i].narrow(2, length, mask[i].size(2) - length).fill_(1)
-            x = x.masked_fill(mask, 0)
-        return x, lengths
-
-
-class InferenceBatchSoftmax(nn.Module):
-    def forward(self, input_):
-        if not self.training:
-            return F.softmax(input_, dim=-1)
-        else:
-            return input_
-
-
 class BatchRNN(nn.Module):
     def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, bidirectional=False, batch_norm=True):
         super(BatchRNN, self).__init__()
@@ -104,46 +65,12 @@ class BatchRNN(nn.Module):
             x = x.view(x.size(0), x.size(1), 2, -1).sum(2).view(x.size(0), x.size(1), -1)  # (TxNxH*2) -> (TxNxH) by sum
         return x
 
-
-class Lookahead(nn.Module):
-    # Wang et al 2016 - Lookahead Convolution Layer for Unidirectional Recurrent Neural Networks
-    # input shape - sequence, batch, feature - TxNxH
-    # output shape - same as input
-    def __init__(self, n_features, context):
-        # should we handle batch_first=True?
-        super(Lookahead, self).__init__()
-        self.n_features = n_features
-        self.weight = Parameter(torch.Tensor(n_features, context + 1))
-        assert context > 0
-        self.context = context
-        self.register_parameter('bias', None)
-        self.init_parameters()
-
-    def init_parameters(self):  # what's a better way initialiase this layer?
-        stdv = 1. / math.sqrt(self.weight.size(1))
-        self.weight.data.uniform_(-stdv, stdv)
-
-    def forward(self, input):
-        seq_len = input.size(0)
-        # pad the 0th dimension (T/sequence) with zeroes whose number = context
-        # Once pytorch's padding functions have settled, should move to those.
-        padding = torch.zeros(self.context, *(input.size()[1:])).type_as(input.data)
-        x = torch.cat((input, Variable(padding)), 0)
-
-        # add lookahead windows (with context+1 width) as a fourth dimension
-        # for each seq-batch-feature combination
-        x = [x[i:i + self.context + 1] for i in range(seq_len)]  # TxLxNxH - sequence, context, batch, feature
-        x = torch.stack(x)
-        x = x.permute(0, 2, 3, 1)  # TxNxHxL - sequence, batch, feature, context
-
-        x = torch.mul(x, self.weight).sum(dim=3)
-        return x
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(' \
-               + 'n_features=' + str(self.n_features) \
-               + ', context=' + str(self.context) + ')'
-
+class InferenceBatchSoftmax(nn.Module):
+    def forward(self, input_):
+        if not self.training:
+            return F.softmax(input_, dim=-1)
+        else:
+            return input_
 
 class LipReader(nn.Module):
     def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5,
@@ -160,17 +87,9 @@ class LipReader(nn.Module):
 
         num_classes = len(self._labels)
 
-        self.conv = MaskConv(nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(20, 5)),
-            nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True),
-            nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-            nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True)
-        ))
 
-        # this should be longer than 5 seconds * 30 FPS = 150
-        rnn_input_size = 200
+        # This is not sequence length, but rather flattened input dimension, (68*3=204).
+        rnn_input_size = 204
 
         rnns = []
         rnn = BatchRNN(input_size=rnn_input_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type,
@@ -181,11 +100,6 @@ class LipReader(nn.Module):
                            bidirectional=bidirectional)
             rnns.append(('%d' % (x + 1), rnn))
         self.rnns = nn.Sequential(OrderedDict(rnns))
-        self.lookahead = nn.Sequential(
-            # consider adding batch norm?
-            Lookahead(rnn_hidden_size, context=context),
-            nn.Hardtanh(0, 20, inplace=True)
-        ) if not bidirectional else None
 
         fully_connected = nn.Sequential(
             nn.BatchNorm1d(rnn_hidden_size),
@@ -197,13 +111,21 @@ class LipReader(nn.Module):
         self.inference_softmax = InferenceBatchSoftmax()
 
     def forward(self, x, lengths):
+        """
+
+        :param x: [b, seq_len, num_pts=68, pts_dim=3]
+        :param lengths:
+        :return:
+        """
         lengths = lengths.cpu().int()
         output_lengths = self.get_seq_lens(lengths)
-        x, _ = self.conv(x, output_lengths)
+        # x, _ = self.conv(x, output_lengths)
 
         sizes = x.size()
-        x = x.view(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
-        x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
+        x = x.view(sizes[0], sizes[1], sizes[2] * sizes[3])
+        # x: [b, seq_len, num_pts*pts_dim=68*3]
+        x = x.transpose(0, 1).contiguous()  # TxNxH
+        # x: [seq_len, b, num_pts*pts_dim=68*3]
 
         for rnn in self.rnns:
             x = rnn(x, output_lengths)
@@ -225,9 +147,10 @@ class LipReader(nn.Module):
         :return: 1D Tensor scaled by model
         """
         seq_len = input_length
-        for m in self.conv.modules():
-            if type(m) == nn.modules.conv.Conv2d:
-                seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
+        # REVIEW josephz: We will need to put this back when we use convs.
+        # for m in self.conv.modules():
+        #     if type(m) == nn.modules.conv.Conv2d:
+        #         seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
         return seq_len.int()
 
     @classmethod
@@ -258,7 +181,6 @@ class LipReader(nn.Module):
             'hidden_size': model._hidden_size,
             'hidden_layers': model._hidden_layers,
             'rnn_type': supported_rnns_inv.get(model._rnn_type, model._rnn_type.__name__.lower()),
-            'audio_conf': model._audio_conf,
             'labels': model._labels,
             'state_dict': model.state_dict(),
             'bidirectional': model._bidirectional

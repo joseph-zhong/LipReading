@@ -119,7 +119,7 @@ def _load_or_create_model(
         labels = str(''.join(json.load(label_file)))
     except:
       # josephz: remove
-      labels = 'abcdefghijklmnopqrstuvwxyz1234567890-=+"\''
+      labels = "abcdefghijklmnopqrstuvwxyz1234567890-=+'\" "
 
     rnn_type = rnn_type.lower()
     assert rnn_type in _model.supported_rnns, "rnn_type should be either lstm, rnn or gru"
@@ -225,6 +225,7 @@ def train(
   print(model)
   print("Number of parameters: %d" % _model.LipReader.get_param_size(model))
 
+  # josephz: CTCLoss, see https://github.com/SeanNaren/warp-ctc
   criterion = CTCLoss()
   decoder = _decoder.GreedyDecoder(labels)
 
@@ -236,7 +237,9 @@ def train(
       batch_start = time.time()
 
       inputs, targets, input_percentages, target_sizes = data
-      input_sizes = input_percentages.mul_(int(inputs.size(3))).int()
+      assert len(inputs.shape) == 4 and inputs.shape[2:] == (68, 3)
+      batch_size, seq_len, num_pts, pts_dim = inputs.shape
+      input_sizes = input_percentages.mul(int(inputs.size(1))).int()
 
       # Measure elapsed data loading time.
       data_time.update(time.time() - batch_start)
@@ -247,6 +250,12 @@ def train(
       out, output_sizes = model(inputs, input_sizes)
       out = out.transpose(0, 1)  # TxNxH
 
+      # acts: Tensor of (seqLength x batch x outputDim) containing output activations from network (before softmax)
+      # labels: 1 dimensional Tensor containing all the targets of the batch in one large sequence
+      # act_lens: Tensor of size (batch) containing size of each output sequence from the network
+      # label_lens: Tensor of (batch) containing label length of each example
+      assert len(targets.shape) == 1
+      assert len(out.shape) == 3 and out.shape[:2] == (seq_len, batch_size)
       loss = criterion(out, targets, output_sizes, target_sizes)
       # Average loss by minibatch.
       loss /= inputs.size(0)
@@ -271,16 +280,16 @@ def train(
       batch_time.update(time.time() - batch_start)
       if not silent:
         print('Epoch[{}][{}{}]'.format(epoch + 1, i + 1, len(train_loader)), end='\t')
-        print('Time {.3f} ({.3f})'.format(batch_time.val, batch_time.avg), end='\t')
-        print('Data {.3f} ({.3f})'.format(data_time.val, data_time.avg), end='\t')
-        print('Loss {.4f} ({.4f})'.format(losses.val, losses.avg))
+        print('Time {:0.3f} ({:0.3f})'.format(batch_time.val, batch_time.avg), end='\t')
+        print('Data {:0.3f} ({:0.3f})'.format(data_time.val, data_time.avg), end='\t')
+        print('Loss {:0.4f} ({:0.4f})'.format(losses.val, losses.avg))
 
     avg_loss /= len(train_loader)
 
     print('Training Summary Epoch: [{}]'.format(epoch + 1), end='\t')
-    print('Time taken (s): {.0f}'.format(time.time() - epoch_start))
-    print('Time taken (s): {.0f}'.format(time.time() - epoch_start))
-    print('Average Loss: {.3f}'.format(avg_loss))
+    print('Time taken (s): {:0.0f}'.format(time.time() - epoch_start))
+    print('Time taken (s): {:0.0f}'.format(time.time() - epoch_start))
+    print('Average Loss: {:0.3f}'.format(avg_loss))
 
     # Reset start iteration in preparation for next epoch.
     start_iter = 0
@@ -317,8 +326,8 @@ def train(
       cer = cer_results[epoch] = 100 * total_cer / len(test_loader)
 
       print('Validation Summary Epoch: [{}]'.format(epoch + 1), end='\t')
-      print('Average WER: {.3f}'.format(wer_results[epoch]), end='\t')
-      print('Average CER: {.3f}'.format(cer_results[epoch]), end='\t')
+      print('Average WER: {:0.3f}'.format(wer_results[epoch]), end='\t')
+      print('Average CER: {:0.3f}'.format(cer_results[epoch]), end='\t')
 
       if tensorboard:
         _tensorboard_log(tensorboard_writer, dataset, epoch + 1, avg_loss, wer, cer)

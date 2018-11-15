@@ -43,8 +43,6 @@ labels, model, optimizer, \
 for i, (data) in enumerate(train_loader, start=start_iter):
   assert len(data) == 2
   inp, label = data
-  import pdb; pdb.set_trace()
-
   print("[i='{}'] [inp.shape='{}'] [type(label)='{}']".format(i, inp.shape, type(label)))
 
 
