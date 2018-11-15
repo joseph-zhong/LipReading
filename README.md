@@ -222,7 +222,11 @@ Othewrwise you will need to compile `dlib` using the following
 ```bash
 git clone https://github.com/davisking/dlib.git
 cd dlib
-python3 setup.py install --user
+python3 setup.py install \
+  --yes USE_AVX_INSTRUCTIONS \
+  --yes DLIB_USE_CUDA \
+  --set CMAKE_PREFIX_PATH=/usr/local/cuda \
+  --set CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda/bin/ --clean
 ```
 
 **Important:** make sure you see the following output
