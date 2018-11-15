@@ -136,15 +136,7 @@ def _collate_fn(batch):
   inps = torch.stack(inps, dim=0)
   return inps, targets
 
-# REVIEW josephz: This is overkill -- `_collate_fn` should just be passed.
-class VariableLenDataLoader(_data.DataLoader):
-  def __init__(self, *args, **kwargs):
-    """
-    Creates a data loader for VariableLenDataLoader.
-    """
-    super(VariableLenDataLoader, self).__init__(*args, **kwargs)
-    self.collate_fn = _collate_fn
-
+# REVIEW josephz: Is this also over-kill?
 class BucketingSampler(_data.Sampler):
   def __init__(self, data_source, batch_size=1):
     """
