@@ -15,7 +15,7 @@ import tqdm as _tqdm
 
 import src.utils.utility as _util
 import src.utils.cmd_line as _cmd
-from utils.data.caption import extract_captions, prune_and_filter_captions
+from src.utils.data.caption import extract_captions, prune_and_filter_captions
 
 _logger = _util.getLogger("CMD Line")
 
