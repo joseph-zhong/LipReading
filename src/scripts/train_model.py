@@ -115,8 +115,12 @@ def _load_or_create_model(
     cer_results = torch.Tensor(epochs)
     wer_results = torch.Tensor(epochs)
 
-    with open(os.path.join(weights_dir, 'labels.json')) as label_file:
-      labels = str(''.join(json.load(label_file)))
+    try:
+      with open(os.path.join(weights_dir, 'labels.json')) as label_file:
+        labels = str(''.join(json.load(label_file)))
+    except:
+      # josephz: remove
+      labels = 'abcdefghijklmnopqrstuvwxyz1234567890-=+"\''
 
     rnn_type = rnn_type.lower()
     assert rnn_type in _model.supported_rnns, "rnn_type should be either lstm, rnn or gru"
@@ -152,17 +156,22 @@ def _get_tensorboard_writer(weights_dir, tensorboard):
 
 def _get_datasets(dataset_dir, train_split, labels, batch, num_workers):
   # Load dataset video IDs and shuffle predictably.
-  videos = glob.glob(os.path.join(dataset_dir), '*/')
+  videos = glob.glob(os.path.join(dataset_dir, '*'))
   videos.sort()
   np.random.seed(0)
   np.random.shuffle(videos)
 
-  split_idx = train_split * videos.shape[0]
+  split_idx = int(train_split * len(videos))
   train_dataset = _data_loader.FrameCaptionDataset(videos[:split_idx], labels=labels)
   test_dataset = _data_loader.FrameCaptionDataset(videos[split_idx:], labels=labels)
 
-  train_loader = _data.DataLoader(train_dataset, batch_size=batch, shuffle=True, num_workers=num_workers)
-  test_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers)
+  train_sampler = _data_loader.BucketingSampler(train_dataset, batch_size=batch)
+  train_loader = _data_loader.VariableLenDataLoader(train_dataset, batch_sampler=train_sampler, num_workers=num_workers)
+  test_loader = _data_loader.VariableLenDataLoader(test_dataset, batch_size=batch, num_workers=num_workers)
+
+  # train_loader = _data.DataLoader(train_dataset, batch_size=batch, num_workers=num_workers)
+  # test_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers)
+
 
   return (train_dataset, train_loader), (test_dataset, test_loader)
 

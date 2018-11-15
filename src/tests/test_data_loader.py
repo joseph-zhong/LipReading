@@ -9,12 +9,12 @@ import src.utils.utility as _util
 
 import src.scripts.train_model as _train
 
-dataset="StephenColbert/nano"
+dataset="StephenColbert/test_dataset_loader"
 batch=10
 num_workers=1
 hidden_size=800
 hidden_layers=5
-train_split=1.0
+train_split=0.5
 rnn_type="gru"
 epochs=70
 cuda=True
@@ -37,6 +37,15 @@ labels, model, optimizer, \
   (loss_results, cer_results, wer_results) = _train._load_or_create_model(
     epochs, dataset, continue_from, learning_rate, rnn_type, hidden_size, hidden_layers, momentum, cuda, tensorboard_writer)
 
-import pdb; pdb.set_trace()
 (train_dataset, train_loader), (test_dataset, test_loader) = _train._get_datasets(
   dataset_dir, train_split, labels, batch, num_workers)
+
+for i, (data) in enumerate(train_loader, start=start_iter):
+  assert len(data) == 2
+  inp, label = data
+  import pdb; pdb.set_trace()
+
+  print("[i='{}'] [inp.shape='{}'] [type(label)='{}']".format(i, inp.shape, type(label)))
+
+
+
