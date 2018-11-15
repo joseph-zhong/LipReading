@@ -8,7 +8,7 @@ This reads the available video and caption files available and generates the cor
 A dataview is a dense table of data input and label pairs.
 For our purposes, we will generate a table for each video-caption pair as follows:
 
-| idx  |  start, end  |  face frames     |  face landmark seq    | face vtx seq         | caption text |
+| idx  |  start, end  |  face_frames     |  face_lmk_seq         | face_vtx_seq         | caption text |
 | ---- | ------------ | ---------------- | --------------------- | -------------------- | ------------ |
 | `i`  | `(s_i, e_i)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
