@@ -16,12 +16,17 @@ signals as input to map to characters and words.
 - [Architecture](#architecture): High level pipeline
   - [Vision Pipeline](#vision-pipeline)
   - [NLP Pipeline](#nlp-pipeline)
-- [Get Started](#get-started): Quick setup and installation instructions
+- [Setup](#setup): Quick setup and installation instructions
   - [External Requirements](#external-requirements): Overview on dependencies
     - [ffmpeg](#ffmpeg-installation)
     - [Pycaption](#pycaption:-caption-reading)
     - [dlib](#dlib-setup)
     - [PRNet](#prnet-setup)
+- [Getting Started](#getting-started): Finally get started on running things
+  - [Tutorial on Configuration files](#configuration): Tutorial on how to run executables via a config file
+  - [Download Data](#download-data): Collect raw data from Youtube.
+  - [Generate Dataview](#generate-dataview): Generate dataview from raw data.
+  - [Train Model](#train-model): :train: Train :train:
 - [Other Resources](#other-resources): Collection of reading material, and
   projects
   
@@ -31,10 +36,10 @@ A high level overview of some TODO items. For more project details please see th
 Github [project](https://github.com/joseph-zhong/LipReading/projects/2)
 
 - [x] Download Data (926 videos)
-- [ ] Build Vision Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669202)
-- [ ] Build NLP Pipeline (1 week) [todo]()
-- [ ] Build Loss Fn and Training Pipeline (2 weeks)
-- [ ] Train :train: and Ship :ship: 
+- [x] Build Vision Pipeline (1 week) [in review](https://github.com/joseph-zhong/LipReading/projects/2#card-14669202)
+- [ ] Build NLP Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669211)
+- [ ] Build Loss Fn and Training Pipeline (2 weeks) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669251)
+- [ ] Train :train: and Ship :ship: [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669014)
   
 ## Architecture
 
@@ -59,7 +64,7 @@ Repr. -> (n, y, x, c) -> (n, (box=1, y_i, x_i, w_i, h_i)) -> (n, (idx=68, y, x))
  -> (chars,) ->  (words,) -> (sentences,)
 ```
 
-## Get Started
+## Setup
 
 0. Clone this repository and install the requirements. We will be using `python3`.
  
@@ -105,8 +110,16 @@ ffmpeg -version
 
 This is primarily dependencies with `tensorflow` vs `tensorflow-gpu`, `scipy` and `imageio`.
 
+On MacOS, try the following:
+
 ```bash
-pip3 install -r requirements.txt
+pip3 install -r requirements.macos.txt
+```
+
+On Ubuntu (with CUDA), instead we will use `tensorflow-gpu`
+
+```bash
+pip3 install -r requirements.ubuntu.txt
 ```
 
 ##### pycaption: Caption Reading 
@@ -316,23 +329,46 @@ You can see further examples of how to use this algorithm in [`./extern/PRNet/de
 
 Once the api is verified, move the contents of the model and `uv` map weights to `./data/weights/prnet` 
 
+## Getting Started
+
+Now that the dependencies are all setup, we can finally do stuff!
+
+### Configuration
+
+Each of our "standard" scripts in `./src/scripts` (i.e. not `./src/scripts/misc`) take the standard `argsparse`-style 
+arguments. For each of the "standard" scripts, you will be able to pass `--help` to see the expected arguments.
+To maintain reproducibility, cmdline arguments can be written in a raw text file with one argument per line.
+
+e.g. for `./config/gen_dataview/nano`
+
+```text
+--inp=StephenColbert/nano 
+--outp_dir=StephenColbert/nano 
+``` 
+
+Represent the arguments to pass to `./src/scripts/generate_dataview.py`.
+
+### Download Data
+
 1. Download the Data
 
 This will pull the Stephen Colbert Youtube monologue videos (`.mp4`), audio (`.wav`) and captions (`.vtt`) into 
 `./data/raw`.  
 
 ```bash
-./src/scripts/collect_data.py
+./src/scripts/misc/collect_data.py
 ```
+
+### Generate Dataview
 
 2. Generate the Dataview
 
 ```bash
-./src/scripts/generate_dataview.py
+./src/scripts/generate_dataview.py $(cat ./config/gen_dataview/nano)
 ```
 
 This will correlate each of data examples as a dense matrix as follows for each corresponding video and caption 
-pair. 
+pair.
 Thus, during cross-validation or testing time, we will be able to separate the train/test samples based on 
 either by unique videos (first 900 vs last 100), or perhaps just segments of videos (first `k` samples vs last 
 `n-k` samples of each video).
@@ -340,14 +376,22 @@ either by unique videos (first 900 vs last 100), or perhaps just segments of vid
 A dataview is a dense table of data input and label pairs.
 For our purposes, we will generate a table for each video-caption pair as follows:
 
-| idx  |  start, end |  face_frames     |  face_lmk_seq         Z| face_vtx_seq         | caption text |
-| ---- | ------------| ---------------- | --------------------- | -------------------- | ------------ |
-| `i`  | `(s_i, e_i)`| `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
+| idx  |  start, end  |  face_lmk_seq         | face_vtx_seq         | caption text |
+| ---- | ------------ | --------------------- | -------------------- | ------------ |
+| `i`  | `(s_i, e_i)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
 Note, the face landmarks are landmarks with coordinates relative to the face frame, which are take from the raw
 landmarks which are coordinates relative to the full frame.
 
 There are 68 canonical face landmarks, and 45128 total face vertices in the point cloud.
+
+### Train Model
+
+3. Train Model
+
+```bash
+./src/scripts/train_model.py
+```
 
 ## Other Resources
 
