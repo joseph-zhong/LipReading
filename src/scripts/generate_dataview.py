@@ -8,7 +8,7 @@ This reads the available video and caption files available and generates the cor
 A dataview is a dense table of data input and label pairs.
 For our purposes, we will generate a table for each video-caption pair as follows:
 
-| idx  |  start, end  |  face_frames     |  face_lmk_seq         | face_vtx_seq         | caption text |
+| idx  |  start, end  |  faces           |  face_lmk_seq         | face_vtx_seq         | cap          |
 | ---- | ------------ | ---------------- | --------------------- | -------------------- | ------------ |
 | `i`  | `(s_i, e_i)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
@@ -144,18 +144,17 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
   assert os.path.isfile(vid_path)
   assert isinstance(captions, collections.OrderedDict) and len(captions) > 0
 
-  dataview = collections.OrderedDict((col, [])
-    for col in ('s_e', 'caption_faces', 'caption_raw_lmks', 'caption_face_lmks', 'caption_face_vtx', 'cap'))
+  dataview = collections.OrderedDict((col, []) for col in ('s_e', 'faces', 'face_lmks_seq', 'face_vtx_seq', 'cap'))
   video_reader = _video.VideoReader(vid_path)
 
   # Iterate through each caption and extract the corresponding frames in (start, end).
   for cap_idx, s_e in enumerate(captions.keys()):
     start, end = s_e
     cap = captions[s_e]
-    # caption_raw_lmks = []
-    caption_face_lmks = []
-    caption_face_vtx = []
-    caption_faces = []
+    # raw_lmks = []
+    face_lmks = []
+    face_vtx = []
+    faces = []
 
     # REVIEW josephz: How to apply timedelay here?
     start_frame = video_reader.get_frame_idx(start)
@@ -201,10 +200,10 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
             start_frame + i, video_reader.getNumFrames() - 1, start_frame + i)
         else:
           # Otherwise accumulate landmarks and faces for the caption.
-          # caption_raw_lmks.append(frame_lmks)
-          caption_faces.append(frame_face)
-          caption_face_lmks.append(frame_face_lmks)
-          caption_face_vtx.append(frame_face_vtx)
+          # raw_lmks.append(frame_lmks)
+          faces.append(frame_face)
+          face_lmks.append(frame_face_lmks)
+          face_vtx.append(frame_face_vtx)
 
           _getSharedLogger().info("\tFrame (%4d/%4d): Generated data example for caption frame=%d, took '%0.3f' seconds",
             start_frame + i, video_reader.getNumFrames() - 1, start_frame + i, time.time() - ts)
@@ -223,12 +222,12 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
         traceback.print_exc()
         break
 
-    # Accumulate caption_lmks pair into dataview.
+    # Accumulate lmks pair into dataview.
     dataview['s_e'].append(s_e)
-    dataview['caption_faces'].append(caption_faces)
-    # dataview['caption_raw_lmks'].append(caption_raw_lmks)
-    dataview['caption_face_lmks'].append(caption_face_lmks)
-    dataview['caption_face_vtx'].append(caption_face_vtx)
+    dataview['faces'].append(faces)
+    # dataview['raw_lmks'].append(raw_lmks)
+    dataview['face_lmk_seq'].append(face_lmks)
+    dataview['face_vtx_seq'].append(face_vtx)
     dataview['cap'].append(cap)
 
     # Visualize caption-lmks pair.
@@ -240,9 +239,9 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
 
       fig = plt.figure()
       vis = list(dequeue)
-      assert len(vis) == len(caption_face_lmks)
+      assert len(vis) == len(face_lmks)
       ims = []
-      for i, lmks in enumerate(caption_face_lmks):
+      for i, lmks in enumerate(face_lmks):
         for x, y, z in lmks:
           cv2.circle(vis[i], (int(round(x)), int(round(y))), 1, _white, thickness=-1)
         ims.append((plt.imshow(vis[i]),))
