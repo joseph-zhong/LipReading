@@ -17,13 +17,12 @@ import glob
 import shutil
 import tqdm
 
-import src.models.extern.deepspeech.model as _model
-import src.models.extern.deepspeech.decoder as _decoder
+import src.models.lipreader.model as _model
+import src.models.lipreader.decoder as _decoder
 
 import src.utils.cmd_line as _cmd
 import src.utils.utility as _util
 import src.data.data_loader as _data_loader
-
 
 # josephz: Baidu's 'fast' implementation of CTC.
 # See https://github.com/baidu-research/warp-ctc
@@ -87,8 +86,8 @@ def _load_or_create_model(
     print('Loading checkpoint model {}'.format(continue_from))
 
     package = torch.load(continue_from, map_location=lambda storage, loc: storage)
-    model = _model.DeepSpeech.load_model_package(package)
-    labels = _model.DeepSpeech.get_labels(model)
+    model = _model.LipReader.load_model_package(package)
+    labels = _model.LipReader.get_labels(model)
 
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, nesterov=True)
     optimizer.load_state_dict(package['optim_dict'])
@@ -125,7 +124,7 @@ def _load_or_create_model(
     rnn_type = rnn_type.lower()
     assert rnn_type in _model.supported_rnns, "rnn_type should be either lstm, rnn or gru"
 
-    model = _model.DeepSpeech(
+    model = _model.LipReader(
       rnn_hidden_size=hidden_size,
       nb_layers=hidden_layers,
       labels=labels,
@@ -224,7 +223,7 @@ def train(
   batch_time, data_time, losses = _init_averages()
 
   print(model)
-  print("Number of parameters: %d" % _model.DeepSpeech.get_param_size(model))
+  print("Number of parameters: %d" % _model.LipReader.get_param_size(model))
 
   criterion = CTCLoss()
   decoder = _decoder.GreedyDecoder(labels)
@@ -326,7 +325,7 @@ def train(
       if checkpoint:
         weights_path = _get_checkpoint_filepath(dataset_dir, epoch + 1)
         torch.save(
-          _model.DeepSpeech.serialize(model, optimizer=optimizer,
+          _model.LipReader.serialize(model, optimizer=optimizer,
             epoch=epoch, loss_results=loss_results, wer_results=wer_results,
             cer_results=cer_results), weights_path)
 
@@ -344,7 +343,7 @@ def train(
           shutil.copyfile(weights_path, model_path)
         else:
           torch.save(
-            _model.DeepSpeech.serialize(model, optimizer=optimizer,
+            _model.LipReader.serialize(model, optimizer=optimizer,
               epoch=epoch, loss_results=loss_results, wer_results=wer_results,
               cer_results=cer_results), model_path)
         best_wer = wer
