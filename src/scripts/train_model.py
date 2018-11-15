@@ -166,12 +166,8 @@ def _get_datasets(dataset_dir, train_split, labels, batch, num_workers):
   test_dataset = _data_loader.FrameCaptionDataset(videos[split_idx:], labels=labels)
 
   train_sampler = _data_loader.BucketingSampler(train_dataset, batch_size=batch)
-  train_loader = _data_loader.VariableLenDataLoader(train_dataset, batch_sampler=train_sampler, num_workers=num_workers)
-  test_loader = _data_loader.VariableLenDataLoader(test_dataset, batch_size=batch, num_workers=num_workers)
-
-  # train_loader = _data.DataLoader(train_dataset, batch_size=batch, num_workers=num_workers)
-  # test_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers)
-
+  train_loader = _data.DataLoader(train_dataset, batch_size=batch, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
+  test_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
 
   return (train_dataset, train_loader), (test_dataset, test_loader)
 
