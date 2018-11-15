@@ -8,7 +8,7 @@ from torch.nn.parameter import Parameter
 from torch.autograd import Variable
 
 import src.utils.cmd_line as _cmd
-import src.utils.utiltiy as _util
+import src.utils.utility as _util
 
 supported_rnns = {
     'lstm': nn.LSTM,
@@ -146,7 +146,7 @@ class Lookahead(nn.Module):
 
 
 class LipReader(nn.Module):
-    def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5, 
+    def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5,
                  bidirectional=True, context=20):
         super(LipReader, self).__init__()
 
@@ -169,7 +169,7 @@ class LipReader(nn.Module):
             nn.Hardtanh(0, 20, inplace=True)
         ))
 
-        # this should be longer than 5 seconds * 30 FPS = 150 
+        # this should be longer than 5 seconds * 30 FPS = 150
         rnn_input_size = 200
 
         rnns = []
