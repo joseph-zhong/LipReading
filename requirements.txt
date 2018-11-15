@@ -1,6 +1,5 @@
 absl-py==0.3.0
 alabaster==0.7.11
-apturl==0.5.2
 astor==0.7.1
 beautifulsoup4==4.4.1
 bleach==1.5.0
@@ -25,9 +24,7 @@ matplotlib==3.0.1
 networkx==2.2
 numpy==1.15.4
 Pillow==5.3.0
-pkg-resources==0.0.0
 protobuf==3.6.1
-pycaption==1.1.0
 pyparsing==2.3.0
 python-dateutil==2.7.5
 PyWavelets==1.0.1
@@ -72,3 +69,7 @@ widgetsnbextension==3.3.1
 xdiagnose==3.8.4.1
 xkit==0.0.0
 XlsxWriter==0.7.3
+tqdm==4.28.1
+torch
+numpy==1.15.4
+tensorboardX==1.4
