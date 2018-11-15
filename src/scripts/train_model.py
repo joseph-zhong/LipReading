@@ -7,7 +7,6 @@ This trains a specified model.
 
 """
 import os
-import sys
 import time
 import json
 from glob import glob
