@@ -8,9 +8,9 @@ This reads the available video and caption files available and generates the cor
 A dataview is a dense table of data input and label pairs.
 For our purposes, we will generate a table for each video-caption pair as follows:
 
-| idx  |  start, end  |  raw landmark seq     |  face frames     |  face landmark seq    | face vtx seq         | caption text |
-| ---- | ------------ | --------------------- | ---------------- | --------------------- | -------------------- | ------------ |
-| `i`  | `(s_i, e_i)` | `(frames, lmks, yxz)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
+| idx  |  start, end  |  face frames     |  face landmark seq    | face vtx seq         | caption text |
+| ---- | ------------ | ---------------- | --------------------- | -------------------- | ------------ |
+| `i`  | `(s_i, e_i)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
 Note, the face landmarks are landmarks with coordinates relative to the face frame, which are take from the raw
 landmarks which are coordinates relative to the full frame.
@@ -95,7 +95,7 @@ def generate_dataview(
     vid_basename = os.path.basename(vid_path).split('.')[0]
     cap_basename = os.path.basename(cap_path).split('.')[0]
     assert vid_basename == cap_basename
-    dst_path = os.path.join(outp_dir, vid_basename + out_ext)
+    dst_path = os.path.join(outp_dir, vid_basename)
     _getSharedLogger().info(
       "\tVideo (%4d/%4d): Writing dataview to '%s'",
       i, len(vid_paths)-1, dst_path)
@@ -118,11 +118,14 @@ def generate_dataview(
       dataview = _generate_dataview(vid_path, captions, timedelay=timedelay, visualmode=visualmode)
 
       # Save dataview.
-      if force or not os.path.isfile(dst_path):
-        _getSharedLogger().info(
-          "\tVideo (%4d/%4d): Writing dataview to '%s'", i, len(vid_paths) - 1, dst_path)
-        _util.mkdirP(os.path.dirname(dst_path))
-        np.save(dst_path, dataview)
+      for col, rows in dataview.items():
+        dst_col_path = os.path.join(dst_path, col + out_ext)
+        if force or not os.path.isfile(dst_col_path):
+          _getSharedLogger().info(
+            "\tVideo (%4d/%4d): Writing '%s' dataview to '%s'",
+              i, len(vid_paths) - 1, col, dst_col_path)
+          _util.mkdirP(os.path.dirname(dst_col_path))
+          np.save(dst_col_path, rows)
     else:
       _getSharedLogger().warning(
         "\tVideo (%4d/%4d): Skipping existing file: '%s'...", i, len(vid_paths)-1, dst_path)
@@ -141,14 +144,15 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
   assert os.path.isfile(vid_path)
   assert isinstance(captions, collections.OrderedDict) and len(captions) > 0
 
-  dataview = []
+  dataview = collections.OrderedDict((col, [])
+    for col in ('s_e', 'caption_faces', 'caption_raw_lmks', 'caption_face_lmks', 'caption_face_vtx', 'cap'))
   video_reader = _video.VideoReader(vid_path)
 
   # Iterate through each caption and extract the corresponding frames in (start, end).
   for cap_idx, s_e in enumerate(captions.keys()):
     start, end = s_e
     cap = captions[s_e]
-    caption_raw_lmks = []
+    # caption_raw_lmks = []
     caption_face_lmks = []
     caption_face_vtx = []
     caption_faces = []
@@ -197,7 +201,7 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
             start_frame + i, video_reader.getNumFrames() - 1, start_frame + i)
         else:
           # Otherwise accumulate landmarks and faces for the caption.
-          caption_raw_lmks.append(frame_lmks)
+          # caption_raw_lmks.append(frame_lmks)
           caption_faces.append(frame_face)
           caption_face_lmks.append(frame_face_lmks)
           caption_face_vtx.append(frame_face_vtx)
@@ -220,7 +224,12 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
         break
 
     # Accumulate caption_lmks pair into dataview.
-    dataview.append(np.array([s_e, caption_faces, caption_raw_lmks, caption_face_lmks, caption_face_vtx, cap]))
+    dataview['s_e'].append(s_e)
+    dataview['caption_faces'].append(caption_faces)
+    # dataview['caption_raw_lmks'].append(caption_raw_lmks)
+    dataview['caption_face_lmks'].append(caption_face_lmks)
+    dataview['caption_face_vtx'].append(caption_face_vtx)
+    dataview['cap'].append(cap)
 
     # Visualize caption-lmks pair.
     # REVIEW josephz: This is really absolutely shit and should be killed.
@@ -231,7 +240,7 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
 
       fig = plt.figure()
       vis = list(dequeue)
-      assert len(vis) == len(caption_raw_lmks) == len(caption_face_lmks)
+      assert len(vis) == len(caption_face_lmks)
       ims = []
       for i, lmks in enumerate(caption_face_lmks):
         for x, y, z in lmks:
@@ -240,7 +249,12 @@ def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
       ani = ani.ArtistAnimation(fig, ims, interval=33, blit=True, repeat_delay=3000)
       print("Caption:", cap)
       plt.show()
-  return np.array(dataview)
+
+  # Convert Python lists to np.ndarray, and return.
+  for k, v in dataview.items():
+    assert isinstance(v, list)
+    dataview[k] = np.array(v)
+  return dataview
 
 def main(args):
   global _logger
