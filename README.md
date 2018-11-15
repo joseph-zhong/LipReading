@@ -336,9 +336,9 @@ either by unique videos (first 900 vs last 100), or perhaps just segments of vid
 A dataview is a dense table of data input and label pairs.
 For our purposes, we will generate a table for each video-caption pair as follows:
 
-| idx  |  start, end  |  raw landmark seq     |  face frames     |  face landmark seq    | face vtx seq         | caption text |
-| ---- | ------------ | --------------------- | ---------------- | --------------------- | -------------------- | ------------ |
-| `i`  | `(s_i, e_i)` | `(frames, lmks, yxz)` | `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
+| idx  |  start, end |  face_frames     |  face_lmk_seq         Z| face_vtx_seq         | caption text |
+| ---- | ------------| ---------------- | --------------------- | -------------------- | ------------ |
+| `i`  | `(s_i, e_i)`| `(frames, h, w)` | `(frames, lmks, yxz)` | `(frames, vtx, xyz)` |  `"str...."` |
 
 Note, the face landmarks are landmarks with coordinates relative to the face frame, which are take from the raw
 landmarks which are coordinates relative to the full frame.
