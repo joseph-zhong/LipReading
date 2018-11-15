@@ -23,6 +23,7 @@ _patterns = (
     r"\{.*\}",
     r"Stephen:",
     r">>",
+    r"[\.!,?]",
 )
 
 _conditions = (
