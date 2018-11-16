@@ -26,6 +26,7 @@ import src.data.data_loader as _data_loader
 
 # josephz: Baidu's 'fast' implementation of CTC.
 # See https://github.com/baidu-research/warp-ctc
+# and the Python bindings: https://github.com/SeanNaren/warp-ctc
 from warpctc_pytorch import CTCLoss
 
 _logger = None
@@ -57,11 +58,11 @@ class AverageMeter(object):
     self.count += n
     self.avg = self.sum / self.count
 
-def _tensorboard_log(tensorboard_writer, dataset, epoch, loss, wer, cer):
+def _tensorboard_log(tensorboard_writer, dataset, epoch, loss, wer, cer, mode="Train"):
   values = {
-    'Avg Train Loss': loss,
-    'Avg WER': wer,
-    'Avg CER': cer,
+    'Avg {} Loss'.format(mode): loss,
+    'Avg {} WER'.format(mode): wer,
+    'Avg {} CER'.format(mode): cer,
   }
   _getSharedLogger().debug("Writing Tensorboard log: '%s' for epoch: '%d'", values, epoch + 1)
   tensorboard_writer.add_scalars(dataset, values, epoch + 1)
@@ -104,16 +105,25 @@ def _load_or_create_model(
       start_iter = 0
     else:
       start_iter += 1
-    avg_loss = int(package.get('avg_loss', 0))
-    loss_results, cer_results, wer_results = package['loss_results'], package['cer_results'], package['wer_results']
+    avg_tr_loss = int(package.get('avg_tr_loss', 0))
+    avg_val_loss = int(package.get('avg_val_loss', 0))
+    tr_loss_results = package['tr_loss_results']
+    val_loss_results = package['val_loss_results']
+    cer_results = package['cer_results']
+    wer_results = package['wer_results']
 
     # Previous scores to tensorboard logs
-    if tensorboard_writer and package['loss_results'] is not None and start_epoch > 0:
-      for i, (loss, wer, cer) in enumerate(zip(package['loss_results'], package['cer_results'], package['wer_results'])):
-        _tensorboard_log(tensorboard_writer, dataset, i, loss, wer, cer)
+    if tensorboard_writer and package['tr_loss_results'] is not None and start_epoch > 0:
+      # REVIEW josephz: Also include train?
+      # package['tr_loss_results']
+      for i, (val_loss, wer, cer) in enumerate(zip(package['val_loss_results'],
+          package['val_cer_results'],
+          package['val_wer_results'])):
+        _tensorboard_log(tensorboard_writer, dataset, i, val_loss, wer, cer, mode="Validation")
   else:
-    avg_loss = start_iter = start_epoch = 0
-    loss_results = torch.Tensor(epochs)
+    avg_tr_loss = avg_val_loss = start_iter = start_epoch = 0
+    tr_loss_results = torch.Tensor(epochs)
+    val_loss_results = torch.Tensor(epochs)
     cer_results = torch.Tensor(epochs)
     wer_results = torch.Tensor(epochs)
 
@@ -137,20 +147,22 @@ def _load_or_create_model(
 
   if cuda:
     model.cuda()
-  return labels, model, optimizer, (avg_loss, start_iter, start_epoch), (loss_results, cer_results, wer_results)
+  return labels, model, optimizer, \
+    (avg_tr_loss, avg_val_loss, start_iter, start_epoch), \
+    (tr_loss_results, val_loss_results, cer_results, wer_results)
 
 def _init_averages():
   batch_time = AverageMeter()
   data_time = AverageMeter()
-  losses = AverageMeter()
-  return batch_time, data_time, losses
+  tr_losses = AverageMeter()
+  val_losses = AverageMeter()
+  return batch_time, data_time, tr_losses, val_losses
 
 def _get_tensorboard_writer(weights_dir, tensorboard):
   # Initialize weights directory
   os.makedirs(weights_dir, exist_ok=True)
 
   # josephz: Initialize tensorboard visualization.
-  import pdb; pdb.set_trace()
   tensorboard_writer = None
   if tensorboard:
     from tensorboardX import SummaryWriter
@@ -221,13 +233,18 @@ def train(
 
   tensorboard_writer = _get_tensorboard_writer(weights_dir, tensorboard)
 
-  labels, model, optimizer, (avg_loss, start_iter, start_epoch), (loss_results, cer_results, wer_results) \
-    = _load_or_create_model(epochs, dataset, continue_from, learning_rate, rnn_type, hidden_size, hidden_layers, momentum, cuda, tensorboard_writer)
+  # REVIEW josephz: Can this be further broken down?
+  labels, model, optimizer, \
+    (avg_tr_loss, avg_val_loss, start_iter, start_epoch), \
+    (tr_loss_results, val_loss_results, cer_results, wer_results) = _load_or_create_model(
+        epochs, dataset, continue_from, learning_rate,
+        rnn_type, hidden_size, hidden_layers,
+        momentum, cuda, tensorboard_writer)
 
   (train_dataset, train_loader), (test_dataset, test_loader) = _get_datasets(dataset_dir, train_split, labels, batch, num_workers)
 
   best_wer = None
-  batch_time, data_time, losses = _init_averages()
+  batch_time, data_time, tr_losses, val_losses = _init_averages()
 
   print(model)
   print("Number of parameters: %d" % _model.LipReader.get_param_size(model))
@@ -263,21 +280,21 @@ def train(
       # label_lens: Tensor of (batch) containing label length of each example
       assert len(targets.shape) == 1
       assert len(out.shape) == 3 and out.shape[:2] == (seq_len, batch_size)
-      loss = criterion(out, targets, output_sizes, target_sizes)
+      tr_loss = criterion(out, targets, output_sizes, target_sizes)
       # Average loss by minibatch.
-      loss /= inputs.size(0)
+      tr_loss /= inputs.size(0)
 
-      loss_value = loss.item()
-      if loss_value == np.inf or loss_value == -np.inf:
+      val_loss_value = tr_loss.item()
+      if val_loss_value == np.inf or val_loss_value == -np.inf:
         print("WARNING: received an inf loss, setting loss value to 0")
-        loss_value = 0
+        val_loss_value = 0
 
-      avg_loss += loss_value
-      losses.update(loss_value, inputs.size(0))
+      avg_tr_loss += val_loss_value
+      tr_losses.update(val_loss_value, inputs.size(0))
 
       # Compute gradient.
       optimizer.zero_grad()
-      loss.backward()
+      tr_loss.backward()
       torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
       # SDG step!
@@ -289,14 +306,13 @@ def train(
         print('Epoch[{}][{}{}]'.format(epoch + 1, i + 1, len(train_loader)), end='\t')
         print('Time {:0.3f} ({:0.3f})'.format(batch_time.val, batch_time.avg), end='\t')
         print('Data {:0.3f} ({:0.3f})'.format(data_time.val, data_time.avg), end='\t')
-        print('Loss {:0.4f} ({:0.4f})'.format(losses.val, losses.avg))
-
-    avg_loss /= len(train_loader)
+        print('Loss {:0.4f} ({:0.4f})'.format(tr_losses.val, tr_losses.avg))
+    avg_tr_loss /= len(train_loader)
 
     print('Training Summary Epoch: [{}]'.format(epoch + 1), end='\t')
     print('Time taken (s): {:0.0f}'.format(time.time() - epoch_start))
     print('Time taken (s): {:0.0f}'.format(time.time() - epoch_start))
-    print('Average Loss: {:0.3f}'.format(avg_loss))
+    print('Average Training Loss: {:0.3f}'.format(avg_tr_loss))
 
     # Reset start iteration in preparation for next epoch.
     start_iter = 0
@@ -306,7 +322,8 @@ def train(
     with torch.no_grad():
       for i, (data) in tqdm.tqdm(enumerate(test_loader), total=len(test_loader)):
         inputs, targets, input_percentages, target_sizes = data
-        input_sizes = input_percentages.mul_(int(inputs.size(3))).int()
+        input_sizes = input_percentages.mul_(int(inputs.size(1))).int()
+        batch_size, seq_len, num_pts, pts_dim = inputs.shape
 
         # Unflatten targets?
         split_targets = []
@@ -319,6 +336,19 @@ def train(
           inputs = inputs.cuda()
 
         out, output_sizes = model(inputs, input_sizes)
+        out_loss = out.transpose(0, 1)  # TxNxH
+        assert len(targets.shape) == 1
+        assert len(out_loss.shape) == 3 and out_loss.shape[:2] == (seq_len, batch_size)
+        # out is supposed to be (seqLength x batch x outputDim).
+        val_loss = criterion(out_loss, targets, output_sizes, target_sizes)
+
+        val_loss_value = val_loss.item()
+        if val_loss_value == np.inf or val_loss_value == -np.inf:
+          print("WARNING: received an inf loss, setting loss value to 0")
+          val_loss_value = 0
+
+        avg_val_loss += val_loss_value
+        val_losses.update(val_loss_value, inputs.size(0))
 
         decoded_output, _ = decoder.decode(out.data, output_sizes)
         target_strings = decoder.convert_to_strings(split_targets)
@@ -327,22 +357,24 @@ def train(
           transcript, reference = decoded_output[x][0], target_strings[x][0]
           total_wer += decoder.wer(transcript, reference) / float(len(reference.split()))
           total_cer += decoder.cer(transcript, reference) / float(len(reference))
+      avg_val_loss /= len(test_loader)
 
-      loss_results[epoch] = avg_loss
+      val_loss_results[epoch] = avg_val_loss
       wer = wer_results[epoch] = 100 * total_wer / len(test_loader.dataset)  # .dataset?
       cer = cer_results[epoch] = 100 * total_cer / len(test_loader.dataset)
 
       print('Validation Summary Epoch: [{}]'.format(epoch + 1), end='\t')
       print('Average WER: {:0.3f}'.format(wer_results[epoch]), end='\t')
       print('Average CER: {:0.3f}'.format(cer_results[epoch]), end='\t')
+      print('Average Validation Loss: {:0.3f}'.format(avg_val_loss))
 
       if tensorboard:
-        _tensorboard_log(tensorboard_writer, dataset, epoch + 1, avg_loss, wer, cer)
+        _tensorboard_log(tensorboard_writer, dataset, epoch + 1, avg_val_loss, wer, cer, mode="Validation")
       if checkpoint:
         weights_path = _get_checkpoint_filepath(weights_dir, epoch + 1)
         torch.save(
           _model.LipReader.serialize(model, optimizer=optimizer,
-            epoch=epoch, loss_results=loss_results, wer_results=wer_results,
+            epoch=epoch, loss_results=val_loss_results, wer_results=wer_results,
             cer_results=cer_results), weights_path)
 
       # Do annealing.
@@ -353,17 +385,17 @@ def train(
       if best_wer is None or best_wer > wer_results[epoch]:
         print('Found better validated model, saving to {}'.format)
         model_path = os.path.join(weights_dir, 'model.pth')
-        weights_path = _get_checkpoint_filepath(dataset_dir, epoch + 1)
+        weights_path = _get_checkpoint_filepath(weights_dir, epoch + 1)
 
         if os.path.isfile(weights_path):
           shutil.copyfile(weights_path, model_path)
         else:
           torch.save(
             _model.LipReader.serialize(model, optimizer=optimizer,
-              epoch=epoch, loss_results=loss_results, wer_results=wer_results,
+              epoch=epoch, loss_results=val_loss_results, wer_results=wer_results,
               cer_results=cer_results), model_path)
         best_wer = wer
-        avg_loss = 0
+        avg_tr_loss = 0
 
 def main():
   global _logger

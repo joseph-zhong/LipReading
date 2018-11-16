@@ -33,7 +33,7 @@ dataset_dir = _util.getRelDatasetsPath(dataset)
 tensorboard_writer = _train._get_tensorboard_writer(weights_dir, tensorboard)
 
 labels, model, optimizer, \
-  (avg_loss, start_iter, start_epoch), \
+  (avg_tr_loss, avg_val_loss, start_iter, start_epoch), \
   (loss_results, cer_results, wer_results) = _train._load_or_create_model(
     epochs, dataset, continue_from, learning_rate, rnn_type, hidden_size, hidden_layers, momentum, cuda, tensorboard_writer)
 

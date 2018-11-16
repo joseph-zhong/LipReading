@@ -133,6 +133,9 @@ class LipReader(nn.Module):
         if not self._bidirectional:  # no need for lookahead layer in bidirectional
             x = self.lookahead(x)
 
+        # REVIEW josephz: What is the output shape supposed to be?
+        # For CTC Loss, it should be (seqLength x batch x outputDim).
+        # For more, see https://github.com/SeanNaren/warp-ctc
         x = self.fc(x)
         x = x.transpose(0, 1)
         # identity in training mode, softmax in eval mode
