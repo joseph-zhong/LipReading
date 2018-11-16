@@ -436,6 +436,14 @@ potentially helpful starting points for the project.
 - JOINT CTC-ATTENTION BASED END-TO-END SPEECH RECOGNITION USING MULTI-TASK LEARNING (Jan. 2017, CMU)
   - https://arxiv.org/pdf/1609.06773.pdf
   - Joint CTC + attention model
+  - [Unofficial implementation](https://github.com/hirofumi0810/tensorflow_end2end_speech_recognition)
+- A Comparison of Sequence-to-Sequence Models for Speech Recognition (2017, Google & Nvidia)
+  - https://www.isca-speech.org/archive/Interspeech_2017/pdfs/0233.PDF
+  - CTC vs. attention vs. RNN-transducer vs. RNN-transducer w/ attention
+- EXPLORING NEURAL TRANSDUCERS FOR END-TO-END SPEECH RECOGNITION (July 2017, Baidu)
+  - https://arxiv.org/pdf/1707.07413.pdf
+  - CTC vs. attention vs. RNN-transducer
+
 
 ### Academic Datasets
 
