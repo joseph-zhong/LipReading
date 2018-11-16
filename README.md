@@ -428,10 +428,14 @@ potentially helpful starting points for the project.
   - https://arxiv.org/pdf/1809.02108.pdf
 - Lip Reading Sentences in the Wild (Jan. 2017, Deepmind)
   - https://arxiv.org/pdf/1611.05358.pdf
+  - CNN + LSTM encoder, attentive LSTM decoder
 - LARGE-SCALE VISUAL SPEECH RECOGNITION (Oct. 2018, DeepMind)
   - https://arxiv.org/pdf/1807.05162.pdf
 - Lip Reading in Profile (2017, Oxford)
   - http://www.robots.ox.ac.uk/~vgg/publications/2017/Chung17a/chung17a.pdf
+- JOINT CTC-ATTENTION BASED END-TO-END SPEECH RECOGNITION USING MULTI-TASK LEARNING (Jan. 2017, CMU)
+  - https://arxiv.org/pdf/1609.06773.pdf
+  - Joint CTC + attention model
 
 ### Academic Datasets
 
