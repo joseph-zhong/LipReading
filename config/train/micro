@@ -1,0 +1,16 @@
+--dataset=StephenColbert/micro
+--epochs=70
+--batch=5
+--train_split=0.8
+--num_workers=1
+--hidden_size=800
+--hidden_layers=5
+--rnn_type=gru
+--cuda
+--learning_rate=3e-4
+--momentum=0.9
+--max_norm=400
+--anneal=1.1
+--checkpoint
+--tensorboard
+--continue_from=0
