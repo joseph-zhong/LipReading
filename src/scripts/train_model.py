@@ -63,10 +63,13 @@ def _tensorboard_log(tensorboard_writer, dataset, epoch, loss, wer, cer):
     'Avg WER': wer,
     'Avg CER': cer,
   }
+  _getSharedLogger().debug("Writing Tensorboard log: '%s' for epoch: '%d'", values, epoch + 1)
   tensorboard_writer.add_scalars(dataset, values, epoch + 1)
 
 def _get_checkpoint_filepath(dataset_dir, num):
-  return os.path.join(dataset_dir, "checkpoint_{}.pth".format(num))
+  res = os.path.join(dataset_dir, "ckpts", "checkpoint_{}.pth".format(num))
+  _util.mkdirP(os.path.dirname(res))
+  return res
 
 def _load_or_create_model(
   epochs,
@@ -118,7 +121,7 @@ def _load_or_create_model(
       with open(os.path.join(weights_dir, 'labels.json')) as label_file:
         labels = str(''.join(json.load(label_file)))
     except:
-      # josephz: remove
+      # REVIEW josephz: remove
       labels = "abcdefghijklmnopqrstuvwxyz1234567890-=+'\" "
 
     rnn_type = rnn_type.lower()
@@ -147,10 +150,14 @@ def _get_tensorboard_writer(weights_dir, tensorboard):
   os.makedirs(weights_dir, exist_ok=True)
 
   # josephz: Initialize tensorboard visualization.
+  import pdb; pdb.set_trace()
   tensorboard_writer = None
   if tensorboard:
     from tensorboardX import SummaryWriter
     tensorboard_writer = SummaryWriter(weights_dir)
+    _getSharedLogger().info("Writing Tensorboard logs to '%s'", weights_dir)
+  else:
+    _getSharedLogger().warning("Tensorboard disabled...")
   return tensorboard_writer
 
 def _get_datasets(dataset_dir, train_split, labels, batch, num_workers):
@@ -322,8 +329,8 @@ def train(
           total_cer += decoder.cer(transcript, reference) / float(len(reference))
 
       loss_results[epoch] = avg_loss
-      wer = wer_results[epoch] = 100 * total_wer / len(test_loader)  # .dataset?
-      cer = cer_results[epoch] = 100 * total_cer / len(test_loader)
+      wer = wer_results[epoch] = 100 * total_wer / len(test_loader.dataset)  # .dataset?
+      cer = cer_results[epoch] = 100 * total_cer / len(test_loader.dataset)
 
       print('Validation Summary Epoch: [{}]'.format(epoch + 1), end='\t')
       print('Average WER: {:0.3f}'.format(wer_results[epoch]), end='\t')
@@ -332,7 +339,7 @@ def train(
       if tensorboard:
         _tensorboard_log(tensorboard_writer, dataset, epoch + 1, avg_loss, wer, cer)
       if checkpoint:
-        weights_path = _get_checkpoint_filepath(dataset_dir, epoch + 1)
+        weights_path = _get_checkpoint_filepath(weights_dir, epoch + 1)
         torch.save(
           _model.LipReader.serialize(model, optimizer=optimizer,
             epoch=epoch, loss_results=loss_results, wer_results=wer_results,
