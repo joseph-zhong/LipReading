@@ -27,6 +27,7 @@ signals as input to map to characters and words.
   - [Download Data](#download-data): Collect raw data from Youtube.
   - [Generate Dataview](#generate-dataview): Generate dataview from raw data.
   - [Train Model](#train-model): :train: Train :train:
+    - [Examples](#examples): Example initial configurations to experiment.
 - [Other Resources](#other-resources): Collection of reading material, and
   projects
   
@@ -346,7 +347,11 @@ e.g. for `./config/gen_dataview/nano`
 --outp_dir=StephenColbert/nano 
 ``` 
 
-Represent the arguments to pass to `./src/scripts/generate_dataview.py`.
+Represent the arguments to pass to `./src/scripts/generate_dataview.py`, automatically passable via 
+
+```bash
+./src/scripts/generate_dataview.py $(cat ./config/gen_dataview/nano)
+```
 
 ### Download Data
 
@@ -391,6 +396,14 @@ There are 68 canonical face landmarks, and 45128 total face vertices in the poin
 
 ```bash
 ./src/scripts/train_model.py
+```
+
+#### Examples
+
+##### Training on Micro
+
+```bash
+./src/scripts/train_model.py $(cat ./config/train/micro)
 ```
 
 ## Other Resources
