@@ -17,17 +17,18 @@ signals as input to map to characters and words.
   - [Vision Pipeline](#vision-pipeline)
   - [NLP Pipeline](#nlp-pipeline)
 - [Setup](#setup): Quick setup and installation instructions
-  - [External Requirements](#external-requirements): Overview on dependencies
-    - [ffmpeg](#ffmpeg-installation)
-    - [Pycaption](#pycaption:-caption-reading)
-    - [dlib](#dlib-setup)
-    - [PRNet](#prnet-setup)
-- [Getting Started](#getting-started): Finally get started on running things
-  - [Tutorial on Configuration files](#configuration): Tutorial on how to run executables via a config file
-  - [Download Data](#download-data): Collect raw data from Youtube.
-  - [Generate Dataview](#generate-dataview): Generate dataview from raw data.
-  - [Train Model](#train-model): :train: Train :train:
-    - [Examples](#examples): Example initial configurations to experiment.
+  - [Data Directories Structure](#data-directories-structure): How data files are organized
+  - [Collecting Data](#collecting-data): Overview on dependencies for collecting Data
+      - [ffmpeg](#ffmpeg-installation)
+      - [Pycaption](#pycaption:-caption-reading)
+      - [dlib](#dlib-setup)
+      - [PRNet](#prnet-setup)
+  - [Getting Started](#getting-started): Finally get started on running things
+    - [Tutorial on Configuration files](#configuration): Tutorial on how to run executables via a config file
+    - [Download Data](#download-data): Collect raw data from Youtube.
+    - [Generate Dataview](#generate-dataview): Generate dataview from raw data.
+    - [Train Model](#train-model): :train: Train :train:
+      - [Examples](#examples): Example initial configurations to experiment.
 - [Other Resources](#other-resources): Collection of reading material, and
   projects
   
@@ -74,16 +75,35 @@ Please make sure you run python scripts, setup your `PYTHONPATH` at `./`, as wel
 ```bash
 git clone --recurse-submodules -j8 git@github.com:joseph-zhong/LipReading.git 
 # (optional, setup venv) cd LipReading; python3  -m venv .
-cd LipReading 
-pwd
-# Copy the following into your `~/.bashrc`
-# export PYTHONPATH="$PYTHONPATH:/path/to/LipReading/" 
-# export LIP_READING_WS_PATH="/path/to/LipReading/"
 ```
 
-### External Requirements
+1. Once the repository is cloned, the last step for setup is to setup the repository's `PYTHONPATH` and workspace environment variable to take advantage of standardized directory utilities in [`./src/utils/utility.py`](src/utils/utility.py)
 
-The primary requirements are as follows:
+Copy the following into your `~/.bashrc`
+
+```bash
+export PYTHONPATH="$PYTHONPATH:/path/to/LipReading/" 
+export LIP_READING_WS_PATH="/path/to/LipReading/"
+```
+
+### Data Directories Structure
+
+This allows us to have a simple standardized directory structure for all our datasets, raw data, model weights, logs, etc.
+
+```text
+./data/
+  --/datasets (numpy dataset files for dataloaders to load)
+  --/raw      (raw caption/video files extracted from online sources)
+  --/weights  (model weights, both for training/checkpointing/running)
+  --/tb       (Tensorboard logging)
+  --/...
+```
+
+See [`./src/utils/utility.py`](src/utils/utility.py) for more.
+
+### Collecting Data
+
+To collect raw data and run the dataset generation pipeline the requirements are as follows:
 
 - `ffmpeg`
 - `pycaption`
