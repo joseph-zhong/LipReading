@@ -20,7 +20,7 @@ signals as input to map to characters and words.
   - [Data Directories Structure](#data-directories-structure): How data files are organized
   - [Collecting Data](#collecting-data): Overview on dependencies for collecting Data
       - [ffmpeg](#ffmpeg-installation)
-      - [Pycaption](#pycaption:-caption-reading)
+      - [Pycaption](#pycaption-caption-reading)
       - [dlib](#dlib-setup)
       - [PRNet](#prnet-setup)
   - [Getting Started](#getting-started): Finally get started on running things
