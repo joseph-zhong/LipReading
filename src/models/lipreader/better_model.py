@@ -32,17 +32,17 @@ class VideoEncoder(nn.Module):
                             sorted_frame_lens.data.cpu().numpy() if sorted_frame_lens.is_cuda else sorted_frame_lens.data.numpy(),
                             batch_first=True)
 
-        # encoder_final_state: (num_layers * num_dir, batch_size, hidden_size) (*2 if LSTM)
-        packed_encoder_hidden_states, encoder_final_state = self.encoder(packed_frames)
+        # final_state: (num_layers * num_dir, batch_size, hidden_size) (*2 if LSTM)
+        packed_hidden_states, final_state = self.rnn(packed_frames)
 
         # (batch_size, seq_len, num_dir * hidden_size)
-        encoder_hidden_states, _ = nn.utils.rnn.pad_packed_sequence(packed_encoder_hidden_states, batch_first=True)
+        hidden_states, _ = nn.utils.rnn.pad_packed_sequence(packed_hidden_states, batch_first=True)
 
-        encoder_hidden_states = encoder_hidden_states.index_select(0, restoration_indices)
-        if isinstance(encoder_final_state, tuple):
-            encoder_final_state = (encoder_final_state[0].index_select(1, restoration_indices),
-                                   encoder_final_state[1].index_select(1, restoration_indices))
+        hidden_states = hidden_states.index_select(0, restoration_indices)
+        if isinstance(final_state, tuple):  # LSTM
+            final_state = (final_state[0].index_select(1, restoration_indices),
+                           final_state[1].index_select(1, restoration_indices))
         else:
-            encoder_final_state = encoder_final_state.index_select(1, restoration_indices)
+            final_state = final_state.index_select(1, restoration_indices)
 
-        return encoder_hidden_states, encoder_final_state
+        return hidden_states, final_state
