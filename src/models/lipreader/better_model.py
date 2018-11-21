@@ -136,3 +136,34 @@ class CharDecodingStep(nn.Module):
         output_logits = self.output_proj(new_hidden_state)
 
         return output_logits, final_state
+
+class CharDecoder(nn.Module):
+    def __init__(self, encoder: VideoEncoder, char_dim, output_size, char_padding_idx, rnn_dropout=0):
+        super(CharDecoder).__init__()
+
+        self.output_size = output_size
+
+        self.step = CharDecodingStep(encoder, char_dim, output_size, char_padding_idx, rnn_dropout=rnn_dropout)
+
+    def forward(self,
+                chars: torch.LongTensor,
+                char_lens: torch.LongTensor,
+                encoder_lens: torch.LongTensor,
+                encoder_hidden_states: torch.FloatTensor,
+                encoder_final_state: torch.FloatTensor):
+        """
+        chars: (batch_size, de_seq_len)
+        char_lens: (batch_size, )
+        encoder_lens: (batch_size, )
+        encoder_hidden_states: (batch_size, en_seq_len, hidden_size)
+        encoder_final_state: (num_layers, batch_size, hidden_size)
+        """
+        max_char_len = char_lens.max()
+        prev_state = encoder_final_state
+        all_output_logits = torch.empty(chars.shape[0], chars.shape[1], self.output_size)
+        for i in range(max_char_len):
+            output_logits, prev_state = self.step(chars[:,i], prev_state,
+                                                  encoder_lens, encoder_hidden_states)
+            all_output_logits[:,i,:] = output_logits
+
+        return all_output_logits
