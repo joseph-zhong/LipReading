@@ -3,13 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-supported_rnns = {
-    'lstm': nn.LSTM,
-    'rnn': nn.RNN,
-    'gru': nn.GRU
-}
-supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
-
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
                  rnn_type=nn.LSTM, num_layers=1, bidirectional=True, rnn_dropout=0):
