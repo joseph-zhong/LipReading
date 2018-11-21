@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
-                 rnn_type=nn.LSTM, num_layers=1, bidirectional=True, rnn_dropout=0):
+                 rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
         super(VideoEncoder).__init__()
 
         self.hidden_size = hidden_size
@@ -14,9 +14,9 @@ class VideoEncoder(nn.Module):
         self.bidirectional = bidirectional
         self.rnn_dropout = rnn_dropout
 
-        self.rnn = self.rnn_type(self.frame_dim, self.hidden_size,
-                                 num_layers=self.num_layers, bidirectional=self.bidirectional,
-                                 batch_first=True, dropout=self.rnn_dropout)
+        self.rnn = getattr(nn. self.rnn_type)(self.frame_dim, self.hidden_size,
+                                              num_layers=self.num_layers, bidirectional=self.bidirectional,
+                                              batch_first=True, dropout=self.rnn_dropout)
 
     def forward(self,
                 frames: torch.FloatTensor,
@@ -80,8 +80,8 @@ class CharDecodingStep(nn.Module):
         self.char_padding_idx = char_padding_idx
 
         self.embedding = nn.Embedding(self.output_size, self.char_dim, padding_idx=self.char_padding_idx)
-        self.rnn = self.rnn_type(self.char_dim, self.hidden_size,
-                                 num_layers=self.num_layers, batch_first=True, dropout=self.rnn_dropout)
+        self.rnn = getattr(nn. self.rnn_type)(self.char_dim, self.hidden_size,
+                                              num_layers=self.num_layers, batch_first=True, dropout=self.rnn_dropout)
         self.attn_proj = nn.Linear(2 * self.hidden_size, 1)
         self.concat_layer = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.output_proj = nn.Linear(self.hidden_size, self.output_size)
@@ -163,7 +163,7 @@ class CharDecoder(nn.Module):
 
 class BestModelEver(nn.Module):
     def __init__(self, frame_dim, char_dim, hidden_size, output_size, char_padding_idx,
-                 rnn_type=nn.LSTM, num_layers=1, bidirectional=True, rnn_dropout=0):
+                 rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
         super(BestModelEver).__init__()
 
         self.encoder = VideoEncoder(frame_dim, hidden_size,
