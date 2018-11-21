@@ -106,6 +106,8 @@ class CharDecodingStep(nn.Module):
 
         # (batch_size, en_seq_len)
         encoder_mask = torch.arange(en_seq_len).expand(batch_size, en_seq_len) < encoder_lens.unsqueeze(dim=1)
+        if char.is_cuda:
+            encoder_mask = encoder_mask.cuda()
 
         # (batch_size, char_dim)
         embedded_char = self.embedding(char)
