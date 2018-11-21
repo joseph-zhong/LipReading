@@ -74,9 +74,9 @@ class VideoEncoder(nn.Module):
 
         return final_state
 
-class CharDecoder(nn.Module):
+class CharDecodingStep(nn.Module):
     def __init__(self, encoder: VideoEncoder, char_dim, output_size, char_padding_idx, rnn_dropout=0):
-        super(CharDecoder).__init__()
+        super(CharDecodingStep).__init__()
 
         self.hidden_size = encoder.hidden_size * (2 if encoder.bidirectional else 1)
         self.rnn_type = encoder.rnn_type
