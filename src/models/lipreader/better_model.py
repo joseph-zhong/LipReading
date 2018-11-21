@@ -152,7 +152,7 @@ class CharDecoder(nn.Module):
                 encoder_hidden_states: torch.FloatTensor,
                 encoder_final_state: torch.FloatTensor):
         """
-        chars: (batch_size, de_seq_len)
+        chars: (batch_size, de_seq_len) The first char in each sequence must begin with a <BOS> token
         char_lens: (batch_size, )
         encoder_lens: (batch_size, )
         encoder_hidden_states: (batch_size, en_seq_len, hidden_size)
