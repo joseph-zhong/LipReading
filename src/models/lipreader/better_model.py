@@ -3,10 +3,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+_ALLOWED_RNN_TYPES = {'LSTM', 'GRU', 'RNN'}
+
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
                  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
         super(VideoEncoder).__init__()
+
+        assert rnn_type in _ALLOWED_RNN_TYPES
 
         self.hidden_size = hidden_size
         self.rnn_type = rnn_type
