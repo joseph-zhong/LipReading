@@ -14,10 +14,16 @@ class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
                  rnn_type=nn.LSTM, num_layers=1, bidirectional=True, rnn_dropout=0):
         super(VideoEncoder).__init__()
+
+        self.hidden_size = hidden_size
+        self.rnn_type = rnn_type
+        self.num_layers = num_layers
         self.bidirectional = bidirectional
-        self.rnn = rnn_type(frame_dim, hidden_size,
-                            num_layers=num_layers, bidirectional=bidirectional,
-                            batch_first=True, dropout=rnn_dropout)
+        self.rnn_dropout = rnn_dropout
+
+        self.rnn = self.rnn_type(self.frame_dim, self.hidden_size,
+                                 num_layers=self.num_layers, bidirectional=self.bidirectional,
+                                 batch_first=True, dropout=self.rnn_dropout)
 
     def forward(self,
                 frames: torch.FloatTensor,
