@@ -14,6 +14,7 @@ class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
                  rnn_type=nn.LSTM, num_layers=1, bidirectional=True, rnn_dropout=0):
         super(VideoEncoder).__init__()
+        self.bidirectional = bidirectional
         self.rnn = rnn_type(frame_dim, hidden_size,
                             num_layers=num_layers, bidirectional=bidirectional,
                             batch_first=True, dropout=rnn_dropout)
@@ -38,6 +39,10 @@ class VideoEncoder(nn.Module):
         # (batch_size, seq_len, num_dir * hidden_size)
         hidden_states, _ = nn.utils.rnn.pad_packed_sequence(packed_hidden_states, batch_first=True)
 
+        # (num_layers, batch_size, hidden_size * num_dir) (*2 if LSTM)
+        if self.bidirectional:
+            final_state = self._cat_directions(final_state)
+
         hidden_states = hidden_states.index_select(0, restoration_indices)
         if isinstance(final_state, tuple):  # LSTM
             final_state = (final_state[0].index_select(1, restoration_indices),
@@ -46,3 +51,19 @@ class VideoEncoder(nn.Module):
             final_state = final_state.index_select(1, restoration_indices)
 
         return hidden_states, final_state
+
+    def _cat_directions(self, final_state):
+        """
+        final_state must come from a bidirectional RNN
+        (num_layers * num_dir, batch_size, hidden_size) -->
+        (num_layers, batch_size, hidden_size * num_dir)
+        """
+        def _cat(s):
+            return torch.cat([s[0:s.shape[0]:2], s[1:s.shape[0]:2]], dim=2)
+
+        if isinstance(final_state, tuple):  # LSTM
+            final_state = tuple(_cat(s) for s in final_state)
+        else:
+            final_state = _cat(final_state)
+
+        return final_state
