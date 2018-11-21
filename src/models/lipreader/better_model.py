@@ -167,3 +167,29 @@ class CharDecoder(nn.Module):
             all_output_logits[:,i,:] = output_logits
 
         return all_output_logits
+
+class BestModelEver(nn.Module):
+    def __init__(self, frame_dim, char_dim, hidden_size, output_size, char_padding_idx,
+                 rnn_type=nn.LSTM, num_layers=1, bidirectional=True, rnn_dropout=0):
+        super(BestModelEver).__init__()
+
+        self.encoder = VideoEncoder(frame_dim, hidden_size,
+                                    rnn_type=rnn_type, num_layers=num_layers,
+                                    bidirectional=bidirectional, rnn_dropout=rnn_dropout)
+        self.decoder = CharDecoder(self.encoder, char_dim, output_size, char_padding_idx,
+                                   rnn_dropout=rnn_dropout)
+
+    def forward(self,
+                frames: torch.FloatTensor,
+                frame_lens: torch.LongTensor,
+                chars: torch.FloatTensor,
+                char_lens: torch.LongTensor):
+        """
+        frames: (batch_size, en_seq_len, frame_dim)
+        frame_lens: (batch_size, )
+        chars: (batch_size, de_seq_len)
+        char_lens: (batch_size, )
+        """
+        encoder_hidden_states, encoder_final_state = self.encoder(frames, frame_lens)
+        output_logits = self.decoder(chars, char_lens, frame_lens, encoder_hidden_states, encoder_final_state)
+        return output_logits
