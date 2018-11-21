@@ -186,3 +186,9 @@ class BestModelEver(nn.Module):
         encoder_hidden_states, encoder_final_state = self.encoder(frames, frame_lens)
         output_logits = self.decoder(chars, char_lens, frame_lens, encoder_hidden_states, encoder_final_state)
         return output_logits
+
+    def loss(self, pred, gold, padding_idx, reduction='elementwise_mean'):
+        # pred: (batch_size, seq_len, output_size); gold: (batch_size, seq_len)
+        assert pred.shape[:2] == gold.shape
+        return F.cross_entropy(pred.reshape(-1, pred.shape[2]), gold.reshape(-1),
+                               ignore_index=padding_idx, reduction=reduction)
