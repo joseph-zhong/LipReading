@@ -22,6 +22,11 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
     _logger = _util.getLogger(os.path.basename(__file__).split('.')[0], verbosity=verbosity)
   return _logger
 
+BOS = '<BOS>'
+EOS = '<EOS>'
+PAD = '<PAD>'
+UNK = '<UNK>'
+
 class FrameCaptionDataset(_data.Dataset):
   def __init__(self, vid_id_dirs, labels,
       cap='cap', frame_type='face_lmk_seq', ext='.npy'):
