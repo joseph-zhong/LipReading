@@ -1,4 +1,4 @@
-from allennlp.nn.util import masked_softmax, sort_batch_by_length
+from allennlp.nn.util import masked_log_softmax, masked_softmax, sort_batch_by_length
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -84,6 +84,9 @@ class CharDecodingStep(nn.Module):
         self.output_size = output_size
         self.char_padding_idx = char_padding_idx
 
+        self.output_mask = torch.ones(self.output_size)
+        self.output_mask[self.char_padding_idx] = 0
+
         self.embedding = nn.Embedding(self.output_size, self.char_dim, padding_idx=self.char_padding_idx)
         self.rnn = getattr(nn, self.rnn_type)(self.char_dim, self.hidden_size,
                                               num_layers=self.num_layers, batch_first=True, dropout=self.rnn_dropout)
@@ -109,6 +112,7 @@ class CharDecodingStep(nn.Module):
         encoder_mask = torch.arange(en_seq_len).expand(batch_size, en_seq_len) < encoder_lens.unsqueeze(dim=1)
         if char.is_cuda:
             encoder_mask = encoder_mask.cuda()
+            self.output_mask = self.output_mask.cuda()
 
         # (batch_size, char_dim)
         embedded_char = self.embedding(char)
@@ -134,8 +138,9 @@ class CharDecodingStep(nn.Module):
 
         # (batch_size, output_size)
         output_logits = self.output_proj(new_hidden_state)
+        output_log_probs = masked_log_softmax(output_logits, self.output_mask, dim=-1)
 
-        return output_logits, final_state
+        return output_log_probs, final_state
 
 class CharDecoder(nn.Module):
     def __init__(self, encoder: VideoEncoder, char_dim, output_size, char_padding_idx, rnn_dropout=0):
