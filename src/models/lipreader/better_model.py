@@ -12,13 +12,14 @@ class VideoEncoder(nn.Module):
 
         assert rnn_type in _ALLOWED_RNN_TYPES
 
+        self.frame_dim = frame_dim
         self.hidden_size = hidden_size
         self.rnn_type = rnn_type
         self.num_layers = num_layers
         self.bidirectional = bidirectional
         self.rnn_dropout = rnn_dropout
 
-        self.rnn = getattr(nn. self.rnn_type)(self.frame_dim, self.hidden_size,
+        self.rnn = getattr(nn, self.rnn_type)(self.frame_dim, self.hidden_size,
                                               num_layers=self.num_layers, bidirectional=self.bidirectional,
                                               batch_first=True, dropout=self.rnn_dropout)
 
@@ -84,7 +85,7 @@ class CharDecodingStep(nn.Module):
         self.char_padding_idx = char_padding_idx
 
         self.embedding = nn.Embedding(self.output_size, self.char_dim, padding_idx=self.char_padding_idx)
-        self.rnn = getattr(nn. self.rnn_type)(self.char_dim, self.hidden_size,
+        self.rnn = getattr(nn, self.rnn_type)(self.char_dim, self.hidden_size,
                                               num_layers=self.num_layers, batch_first=True, dropout=self.rnn_dropout)
         self.attn_proj = nn.Linear(2 * self.hidden_size, 1)
         self.concat_layer = nn.Linear(2 * self.hidden_size, self.hidden_size)
@@ -112,11 +113,11 @@ class CharDecodingStep(nn.Module):
         # (batch_size, char_dim)
         embedded_char = self.embedding(char)
         # (batch_size, seq_len=1, char_dim)
-        char = char.unsqueeze(dim=1)
+        embedded_char = embedded_char.unsqueeze(dim=1)
 
         # hidden_state: (batch_size, seq_len=1, hidden_size)
         # final_state: (num_layers, batch_size, hidden_size)
-        hidden_state, final_state = self.rnn(char, previous_state)
+        hidden_state, final_state = self.rnn(embedded_char, previous_state)
 
         # (batch_size, en_seq_len, hidden_size)
         expanded_hidden_state = hidden_state.expand_as(encoder_hidden_states)
