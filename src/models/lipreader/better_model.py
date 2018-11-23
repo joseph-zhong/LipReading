@@ -9,7 +9,6 @@ class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
                  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
         super(VideoEncoder).__init__()
-
         assert rnn_type in _ALLOWED_RNN_TYPES
 
         self.frame_dim = frame_dim
@@ -30,16 +29,20 @@ class VideoEncoder(nn.Module):
         frames: (batch_size, seq_len, frame_dim)
         frame_lens: (batch_size, )
         """
+        # Reverse sorts the batch by unpadded seq_len.
         (sorted_frames, sorted_frame_lens,
             restoration_indices, _) = sort_batch_by_length(frames, frame_lens)
 
+        # Returns a PackedSequence.
         packed_frames = nn.utils.rnn.pack_padded_sequence(sorted_frames,
                             sorted_frame_lens.data.cpu().numpy() if sorted_frame_lens.is_cuda else sorted_frame_lens.data.numpy(),
                             batch_first=True)
 
+        # Encoder: feed frames to the model, output hidden states.
         # final_state: (num_layers * num_dir, batch_size, hidden_size) (*2 if LSTM)
         packed_hidden_states, final_state = self.rnn(packed_frames)
 
+        # Unpack encoding, the hidden states, a Tensor.
         # (batch_size, seq_len, num_dir * hidden_size)
         hidden_states, _ = nn.utils.rnn.pad_packed_sequence(packed_hidden_states, batch_first=True)
 
@@ -125,8 +128,10 @@ class CharDecodingStep(nn.Module):
 
         # (batch_size, en_seq_len, hidden_size)
         expanded_hidden_state = hidden_state.expand_as(encoder_hidden_states)
+        # (batch_size, en_seq_len, hidden_size * 2)
+        concat_hidden_state = torch.cat([encoder_hidden_states, expanded_hidden_state], dim=2)
         # (batch_size, en_seq_len)
-        attn_logits = self.attn_proj(torch.cat([encoder_hidden_states, expanded_hidden_state], dim=2)).squeeze(dim=-1)
+        attn_logits = self.attn_proj(concat_hidden_state).squeeze(dim=-1)
         # (batch_size, 1, en_seq_len)
         attn_weights = masked_softmax(attn_logits, encoder_mask, dim=-1).unsqueeze(dim=1)
         # (batch_size, hidden_size)
