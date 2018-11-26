@@ -47,36 +47,125 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
     _logger = _util.getLogger(os.path.basename(__file__).split('.')[0], verbosity=verbosity)
   return _logger
 
+# REVIEW josephz: This can be a generalized 'save data' utility.
+def _save_dataview(dst_col_path, rows, force, msg, *args):
+  if force or not os.path.isfile(dst_col_path):
+    if msg is not None:
+      _getSharedLogger().info(msg, *args)
+    _util.mkdirP(os.path.dirname(dst_col_path))
+    np.save(dst_col_path, rows)
+
+def _gen_data(frame, frame_id, num_frames):
+  ts = time.time()
+  frame_face_rect = _face.detectMaxFaceRect(frame, times_to_upsample=1)
+  frame_face, frame_face_rect_pad = _face.extractFace(frame, frame_face_rect, padding=0.3)
+  frame_lmks, _ = _face.detect3dLandmarks(frame, rect=frame_face_rect)
+  frame_vtx = _face.get3dVertices()
+  frame_face_lmks = _face.getFace(frame_lmks, frame_face_rect_pad)
+  frame_face_vtx = _face.getFace(frame_vtx, frame_face_rect_pad)
+
+  # If error occurs in detecting face or landmarks, skip.
+  # REVIEW josephz: How else to check that most of the landmarks are valid? Could also check the size of the
+  # face to be greater than a certain box.
+  if frame_lmks is None:
+    _getSharedLogger().warning("\tFrame (%4d/%4d): No face or landmarks detected for caption frame=%d",
+      frame_id, num_frames, frame_id)
+  else:
+    _getSharedLogger().info("\tFrame (%4d/%4d): Generated data example for caption frame=%d, took '%0.3f' seconds",
+      frame_id, num_frames, frame_id, time.time() - ts)
+  return frame_face_lmks, frame_face_vtx
+
+# REVIEW josephz: How do I implement timedelay for this scenario? In the original implementation, the input
+# audio signal was "delayed" by some ms, or the first `k` ms of input were cut along with the last corresponding
+# `k` ms output. It is possible here that the opposite is true, where looking ahead in the mouth-shape will
+# inform the model of the context? Or is even relevant? Or do we actually want to add frames on each side?
+def _generate_dataview(vid_path, captions, timedelay=0):
+  """ Extracts landmarks that coincide with the captions. Returns a dataview for a particular video-caption pair
+  for frames that correspond with valid captions that also coincide a reasonably detectable face.
+  """
+  assert os.path.isfile(vid_path)
+  assert isinstance(captions, collections.OrderedDict) and len(captions) > 0
+
+  dataview = collections.OrderedDict((col, []) for col in ('s_e', 'face_lmk_seq', 'face_vtx_seq', 'cap'))
+  video_reader = _video.VideoReader(vid_path)
+
+  # Iterate through each caption and extract the corresponding frames in (start, end).
+  for cap_idx, s_e in enumerate(captions.keys()):
+    if cap_idx == 3: break
+    start, end = s_e
+    cap = captions[s_e]
+    face_lmks = []
+    face_vtx = []
+
+    # REVIEW josephz: How to apply timedelay here?
+    start_frame = video_reader.get_frame_idx(start)
+    end_frame = video_reader.get_frame_idx(end)
+    frames = video_reader.genFrames(start_frame, end_frame)
+    _getSharedLogger().info("\tCaption (%4d/%4d): Computing landmarks for '%d' frames",
+      cap_idx + 1, len(captions) - 1, end_frame - start_frame)
+
+    # For each corresponding frame, detect face, extract the 3D landmarks, and accumulate caption-lmks pairs.
+    for i, frame in enumerate(frames):
+      assert len(frame.shape) == 3
+
+      # Detect face and extract 3d landmarks.
+      try:
+        frame_face_lmks, frame_face_vtx = _gen_data(frame, start_frame + i, video_reader.getNumFrames() - 1)
+        if frame_face_lmks is not None:
+          assert frame_face_vtx is not None
+          face_lmks.append(frame_face_lmks)
+          face_vtx.append(frame_face_vtx)
+      except KeyboardInterrupt:
+        _getSharedLogger().warning("\tFrame (%4d/%4d): KeyboardInterrupt, aborting...",
+          start_frame + i, video_reader.getNumFrames() - 1)
+        exit()
+      except Exception as e:
+        _getSharedLogger().error("\tFrame (%4d/%4d): Unxepected exception '%s', skipping caption...",
+          start_frame + i, video_reader.getNumFrames() - 1, e)
+        traceback.print_exc()
+        break
+
+    # Accumulate lmks pair into dataview.
+    face_lmks = np.array(face_lmks)
+    face_vtx = np.array(face_vtx)
+    assert(len(x.shape) == 3 for x in face_lmks)
+    assert(len(x.shape) == 3 for x in face_vtx)
+    dataview['s_e'].append(s_e)
+    dataview['cap'].append(cap)
+    dataview['face_lmk_seq'].append(face_lmks)
+    dataview['face_vtx_seq'].append(face_vtx)
+
+  # Convert Python lists to np.ndarray, and return.
+  for k, v in dataview.items():
+    assert isinstance(v, list)
+    dataview[k] = np.array(v)
+  return dataview
+
 def generate_dataview(
-    inp="StephenColbert/nano2",
-    outp_dir="StephenColbert/nano2",
+    inp_dir="StephenColbert/nano2",
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
     timedelay=0,
     force=False,
-    visualmode=False,
 ):
   """ Generates dataviews for the given input file or directory.
 
-  :param inp: Input video/caption filename (without extension), or directory of video of video/captions.
+  :param inp_dir: Input video/caption filename (without extension), or directory of video of video/captions.
     Videos must have extensions of 'vid_ext' and captions 'cap_ext' with coinciding names.
-  :param outp_dir: Output directory for the datasets.
   :param timedelay: Hyperparameter to add a delay to the input landmarks.
     See section 3.1.1 Recurrent Neural Network for a description in
     http://grail.cs.washington.edu/projects/AudioToObama/siggraph17_obama.pdf
     TODO: Proper implementation and analysis, TO BE DECIDED.
   :param force: Flag to overwrite existing files.
-  :param visualmode: Flag to visualize the dataview against the video frames.
-    REVIEW josephz: This implementation is currently totally ass and should be deprecated now.
   """
   # Standardize directories.
-  inp = _util.getRelRawPath(inp)
-  outp_dir = _util.getRelDatasetsPath(outp_dir)
+  inp_dir = _util.getRelRawPath(inp_dir)
+  outp_dir = _util.getRelDatasetsPath(inp)
 
   # Glob corresponding video and caption files.
-  vid_glob = os.path.join(inp, '*' + vid_ext)
-  cap_glob = os.path.join(inp, '*' + cap_ext)
+  vid_glob = os.path.join(inp_dir, '*' + vid_ext)
+  cap_glob = os.path.join(inp_dir, '*' + cap_ext)
   vid_paths = sorted(glob.glob(vid_glob))
   cap_paths = sorted(glob.glob(cap_glob))
   assert len(vid_paths) == len(cap_paths) > 0
@@ -115,141 +204,20 @@ def generate_dataview(
       captions = _caption.prune_and_filter_captions(captions)
 
       # Extract face-dots for each caption as a dataview.
-      dataview = _generate_dataview(vid_path, captions, timedelay=timedelay, visualmode=visualmode)
+      dataview = _generate_dataview(vid_path, captions, timedelay=timedelay)
 
       # Save dataview.
       for col, rows in dataview.items():
         dst_col_path = os.path.join(dst_path, col + out_ext)
-        if force or not os.path.isfile(dst_col_path):
-          _getSharedLogger().info(
-            "\tVideo (%4d/%4d): Writing '%s' dataview to '%s'",
-              i, len(vid_paths) - 1, col, dst_col_path)
-          _util.mkdirP(os.path.dirname(dst_col_path))
-          np.save(dst_col_path, rows)
+        _save_dataview(dst_col_path, rows, force,
+          "\tVideo (%4d/%4d): Writing '%s' dataview to '%s'",
+          i, len(vid_paths) - 1, col, dst_col_path)
     else:
       _getSharedLogger().warning(
         "\tVideo (%4d/%4d): Skipping existing file: '%s'...", i, len(vid_paths)-1, dst_path)
 
   te = time.time()
   _getSharedLogger().info("Done writing dataviews! Took %0.3f seconds", te - ts)
-
-# REVIEW josephz: How do I implement timedelay for this scenario? In the original implementation, the input
-# audio signal was "delayed" by some ms, or the first `k` ms of input were cut along with the last corresponding
-# `k` ms output. It is possible here that the opposite is true, where looking ahead in the mouth-shape will
-# inform the model of the context? Or is even relevant? Or do we actually want to add frames on each side?
-def _generate_dataview(vid_path, captions, timedelay=0, visualmode=False):
-  """ Extracts landmarks that coincide with the captions. Returns a dataview for a particular video-caption pair
-  for frames that correspond with valid captions that also coincide a reasonably detectable face.
-  """
-  assert os.path.isfile(vid_path)
-  assert isinstance(captions, collections.OrderedDict) and len(captions) > 0
-
-  dataview = collections.OrderedDict((col, []) for col in ('s_e', 'face_lmk_seq', 'face_vtx_seq', 'cap'))
-  video_reader = _video.VideoReader(vid_path)
-
-  # Iterate through each caption and extract the corresponding frames in (start, end).
-  for cap_idx, s_e in enumerate(captions.keys()):
-    start, end = s_e
-    cap = captions[s_e]
-    face_lmks = []
-    face_vtx = []
-    # faces = []
-
-    # REVIEW josephz: How to apply timedelay here?
-    start_frame = video_reader.get_frame_idx(start)
-    end_frame = video_reader.get_frame_idx(end)
-    frames = video_reader.genFrames(start_frame, end_frame)
-    _getSharedLogger().info("\tCaption (%4d/%4d): Computing landmarks for '%d' frames",
-      cap_idx + 1, len(captions) - 1, end_frame - start_frame)
-
-    # For visualization, we need to have a rolling cache of the caption's frames.
-    # REVIEW josephz: This really should be implemented in VideoReader.
-    dequeue = None
-    if visualmode:
-      dequeue = collections.deque(maxlen=end_frame-start_frame+1)
-
-    # For each corresponding frame, detect face, extract the 3D landmarks, and accumulate caption-lmks pairs.
-    for i, frame in enumerate(frames):
-      ts = time.time()
-      assert len(frame.shape) == 3
-
-      # Detect face and extract 3d landmarks.
-      try:
-        frame_face_rect = _face.detectMaxFaceRect(frame, times_to_upsample=1)
-        frame_face, frame_face_rect_pad = _face.extractFace(frame, frame_face_rect, padding=0.3)
-        frame_lmks, _ = _face.detect3dLandmarks(frame, rect=frame_face_rect)
-        frame_vtx = _face.get3dVertices()
-        frame_face_lmks = _face.getFace(frame_lmks, frame_face_rect_pad)
-        frame_face_vtx = _face.getFace(frame_vtx, frame_face_rect_pad)
-
-        # REVIEW josephz: deprecate this...
-        if visualmode:
-          import cv2
-          import matplotlib.pyplot as plt
-          for x, y, z in frame_face_vtx:
-            cv2.circle(frame_face, (int(round(x)), int(round(y))), 1, z, thickness=-1)
-          plt.imshow(frame_face)
-          plt.show()
-
-        # If error occurs in detecting face or landmarks, skip.
-        # REVIEW josephz: How else to check that most of the landmarks are valid? Could also check the size of the
-        # face to be greater than a certain box.
-        if frame_lmks is None:
-          _getSharedLogger().warning("\tFrame (%4d/%4d): No face or landmarks detected for caption frame=%d",
-            start_frame + i, video_reader.getNumFrames() - 1, start_frame + i)
-        else:
-          # Otherwise accumulate landmarks and faces for the caption.
-          # faces.append(frame_face)
-          face_lmks.append(frame_face_lmks)
-          face_vtx.append(frame_face_vtx)
-
-          _getSharedLogger().info("\tFrame (%4d/%4d): Generated data example for caption frame=%d, took '%0.3f' seconds",
-            start_frame + i, video_reader.getNumFrames() - 1, start_frame + i, time.time() - ts)
-
-        # Accumulate frame cache for visualization.
-        if visualmode:
-          assert dequeue is not None
-          dequeue.append(frame_face)
-      except KeyboardInterrupt:
-        _getSharedLogger().warning("\tFrame (%4d/%4d): KeyboardInterrupt, aborting...",
-          start_frame + i, video_reader.getNumFrames() - 1)
-        exit()
-      except Exception as e:
-        _getSharedLogger().error("\tFrame (%4d/%4d): Unxepected exception '%s', skipping caption...",
-          start_frame + i, video_reader.getNumFrames() - 1, e)
-        traceback.print_exc()
-        break
-
-    # Accumulate lmks pair into dataview.
-    dataview['s_e'].append(s_e)
-    dataview['cap'].append(cap)
-    dataview['face_lmk_seq'].append(np.array(face_lmks))
-    dataview['face_vtx_seq'].append(np.array(face_vtx))
-
-    # Visualize caption-lmks pair.
-    # REVIEW josephz: This is really absolutely shit and should be killed.
-    if visualmode:
-      import cv2
-      import matplotlib.pyplot as plt
-      import matplotlib.animation as ani
-
-      fig = plt.figure()
-      vis = list(dequeue)
-      assert len(vis) == len(face_lmks)
-      ims = []
-      for i, lmks in enumerate(face_lmks):
-        for x, y, z in lmks:
-          cv2.circle(vis[i], (int(round(x)), int(round(y))), 1, _white, thickness=-1)
-        ims.append((plt.imshow(vis[i]),))
-      ani = ani.ArtistAnimation(fig, ims, interval=33, blit=True, repeat_delay=3000)
-      print("Caption:", cap)
-      plt.show()
-
-  # Convert Python lists to np.ndarray, and return.
-  for k, v in dataview.items():
-    assert isinstance(v, list)
-    dataview[k] = np.array(v)
-  return dataview
 
 def main(args):
   global _logger
