@@ -91,7 +91,6 @@ def _generate_dataview(vid_path, captions, timedelay=0):
 
   # Iterate through each caption and extract the corresponding frames in (start, end).
   for cap_idx, s_e in enumerate(captions.keys()):
-    if cap_idx == 3: break
     start, end = s_e
     cap = captions[s_e]
     face_lmks = []
@@ -125,24 +124,23 @@ def _generate_dataview(vid_path, captions, timedelay=0):
         traceback.print_exc()
         break
 
-    # Accumulate lmks pair into dataview.
+    # Accumulate lmks pair into dataview of shape (seq_len, 68, 3).
     face_lmks = np.array(face_lmks)
     face_vtx = np.array(face_vtx)
-    assert(len(x.shape) == 3 for x in face_lmks)
-    assert(len(x.shape) == 3 for x in face_vtx)
-    dataview['s_e'].append(s_e)
-    dataview['cap'].append(cap)
-    dataview['face_lmk_seq'].append(face_lmks)
-    dataview['face_vtx_seq'].append(face_vtx)
+    if len(face_lmks.shape) == 3 and len(face_vtx.shape) == 3:
+      dataview['s_e'].append(s_e)
+      dataview['cap'].append(cap)
+      dataview['face_lmk_seq'].append(face_lmks)
+      dataview['face_vtx_seq'].append(face_vtx)
 
   # Convert Python lists to np.ndarray, and return.
   for k, v in dataview.items():
-    assert isinstance(v, list)
+    assert isinstance(v, list) and len(v) > 0
     dataview[k] = np.array(v)
   return dataview
 
 def generate_dataview(
-    inp_dir="StephenColbert/nano2",
+    inp="StephenColbert/nano2",
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
@@ -151,7 +149,7 @@ def generate_dataview(
 ):
   """ Generates dataviews for the given input file or directory.
 
-  :param inp_dir: Input video/caption filename (without extension), or directory of video of video/captions.
+  :param inp: Input video/caption filename (without extension), or directory of video of video/captions.
     Videos must have extensions of 'vid_ext' and captions 'cap_ext' with coinciding names.
   :param timedelay: Hyperparameter to add a delay to the input landmarks.
     See section 3.1.1 Recurrent Neural Network for a description in
@@ -160,7 +158,7 @@ def generate_dataview(
   :param force: Flag to overwrite existing files.
   """
   # Standardize directories.
-  inp_dir = _util.getRelRawPath(inp_dir)
+  inp_dir = _util.getRelRawPath(inp)
   outp_dir = _util.getRelDatasetsPath(inp)
 
   # Glob corresponding video and caption files.

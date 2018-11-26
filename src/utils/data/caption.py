@@ -19,7 +19,7 @@ import src.utils.utility as _util
 
 _patterns = (
     r"\(.*\)",
-    r"\<.*\>",
+    r"<[^>]*>",
     r"\[.*\]",
     r"\{.*\}",
     r"stephen:",
@@ -28,7 +28,7 @@ _patterns = (
 
 _conditions = (
   lambda x: len(x.split()) <= 2,
-  lambda x: len(x) <= 8,
+  # lambda x: len(x) <= 8,
 )
 
 def _getSharedLogger():
