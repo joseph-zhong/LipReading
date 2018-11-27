@@ -134,7 +134,6 @@ e.g. for `./config/gen_dataview/nano`
 
 ```text
 --inp=StephenColbert/nano 
---outp_dir=StephenColbert/nano 
 ``` 
 
 Represent the arguments to pass to `./src/scripts/generate_dataview.py`, automatically passable via 
