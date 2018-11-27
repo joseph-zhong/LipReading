@@ -79,7 +79,7 @@ def _gen_data(frame, frame_id, num_frames):
 # audio signal was "delayed" by some ms, or the first `k` ms of input were cut along with the last corresponding
 # `k` ms output. It is possible here that the opposite is true, where looking ahead in the mouth-shape will
 # inform the model of the context? Or is even relevant? Or do we actually want to add frames on each side?
-def _generate_dataview(vid_path, captions, gen_vtx=True, timedelay=0):
+def _generate_dataview(vid_path, captions, gen_vtx=False, timedelay=0):
   """ Extracts landmarks that coincide with the captions. Returns a dataview for a particular video-caption pair
   for frames that correspond with valid captions that also coincide a reasonably detectable face.
   """
@@ -152,8 +152,8 @@ def generate_dataview(
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
-    gen_vtx=True,
     timedelay=0,
+    gen_vtx=False,
     force=False,
 ):
   """ Generates dataviews for the given input file or directory.
