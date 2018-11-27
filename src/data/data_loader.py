@@ -306,6 +306,7 @@ class FrameCaptionSentenceDataset(_data.Dataset):
     assert len(frames) == len(captions)
     assert all(len(x.shape) == 3 and x.shape[2] == 3 for x in frames)
 
+    # Convert captions to indices and add BOS/EOS markers.
     parsed_captions = self.parse_captions(captions)
     parsed_captions = np.array(parsed_captions)
     return frames, parsed_captions
@@ -319,11 +320,12 @@ class FrameCaptionSentenceDataset(_data.Dataset):
     # `[self.labels_map.get(x) for x in cap]`?
     # return list(filter(None, [self.labels_map.get(x) for x in list(cap)]))
     # Ah, it's actually different in that 'None' values are ignored.
-    res = []
+    res = [_markers2Id[BOS]]
     for cap in caps:
       # Gets index of character for caption. UNK id if for whatever reason is not in dataset.
       ids = np.array([self.char2idx.get(x, _markers2Id[UNK]) for x in list(cap)])
       res.append(ids)
+    res.append(_markers2Id[EOS])
     return res
 
 def _collate_sentences_fn(batches):
