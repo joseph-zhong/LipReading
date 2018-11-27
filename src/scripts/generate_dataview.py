@@ -79,14 +79,18 @@ def _gen_data(frame, frame_id, num_frames):
 # audio signal was "delayed" by some ms, or the first `k` ms of input were cut along with the last corresponding
 # `k` ms output. It is possible here that the opposite is true, where looking ahead in the mouth-shape will
 # inform the model of the context? Or is even relevant? Or do we actually want to add frames on each side?
-def _generate_dataview(vid_path, captions, timedelay=0):
+def _generate_dataview(vid_path, captions, gen_vtx=True, timedelay=0):
   """ Extracts landmarks that coincide with the captions. Returns a dataview for a particular video-caption pair
   for frames that correspond with valid captions that also coincide a reasonably detectable face.
   """
   assert os.path.isfile(vid_path)
   assert isinstance(captions, collections.OrderedDict) and len(captions) > 0
 
-  dataview = collections.OrderedDict((col, []) for col in ('s_e', 'face_lmk_seq', 'face_vtx_seq', 'cap'))
+  if gen_vtx:
+    cols = ('s_e', 'face_lmk_seq', 'face_vtx_seq', 'cap')
+  else:
+    cols = ('s_e', 'face_lmk_seq', 'cap')
+  dataview = collections.OrderedDict((col, []) for col in cols)
   video_reader = _video.VideoReader(vid_path)
 
   # Iterate through each caption and extract the corresponding frames in (start, end).
@@ -94,7 +98,8 @@ def _generate_dataview(vid_path, captions, timedelay=0):
     start, end = s_e
     cap = captions[s_e]
     face_lmks = []
-    face_vtx = []
+    if gen_vtx:
+      face_vtx = []
 
     # REVIEW josephz: How to apply timedelay here?
     start_frame = video_reader.get_frame_idx(start)
@@ -111,9 +116,10 @@ def _generate_dataview(vid_path, captions, timedelay=0):
       try:
         frame_face_lmks, frame_face_vtx = _gen_data(frame, start_frame + i, video_reader.getNumFrames() - 1)
         if frame_face_lmks is not None:
-          assert frame_face_vtx is not None
           face_lmks.append(frame_face_lmks)
-          face_vtx.append(frame_face_vtx)
+          if gen_vtx:
+            assert frame_face_vtx is not None
+            face_vtx.append(frame_face_vtx)
       except KeyboardInterrupt:
         _getSharedLogger().warning("\tFrame (%4d/%4d): KeyboardInterrupt, aborting...",
           start_frame + i, video_reader.getNumFrames() - 1)
@@ -126,12 +132,14 @@ def _generate_dataview(vid_path, captions, timedelay=0):
 
     # Accumulate lmks pair into dataview of shape (seq_len, 68, 3).
     face_lmks = np.array(face_lmks)
-    face_vtx = np.array(face_vtx)
+    if gen_vtx:
+      face_vtx = np.array(face_vtx)
     if len(face_lmks.shape) == 3 and len(face_vtx.shape) == 3:
       dataview['s_e'].append(s_e)
       dataview['cap'].append(cap)
       dataview['face_lmk_seq'].append(face_lmks)
-      dataview['face_vtx_seq'].append(face_vtx)
+      if gen_vtx:
+        dataview['face_vtx_seq'].append(face_vtx)
 
   # Convert Python lists to np.ndarray, and return.
   for k, v in dataview.items():
@@ -144,6 +152,7 @@ def generate_dataview(
     vid_ext=".mp4",
     cap_ext=".vtt",
     out_ext=".npy",
+    gen_vtx=True,
     timedelay=0,
     force=False,
 ):
@@ -202,7 +211,7 @@ def generate_dataview(
       captions = _caption.prune_and_filter_captions(captions)
 
       # Extract face-dots for each caption as a dataview.
-      dataview = _generate_dataview(vid_path, captions, timedelay=timedelay)
+      dataview = _generate_dataview(vid_path, captions, gen_vtx=gen_vtx, timedelay=timedelay)
 
       # Save dataview.
       for col, rows in dataview.items():
