@@ -3,7 +3,6 @@
 ## Data
 !/data/.gitkeep
 /data/*/
-data
 src/models/extern/prnet/Data/net-data/256_256_resfcn256_weight.data-00000-of-00001
 
 ## venv
