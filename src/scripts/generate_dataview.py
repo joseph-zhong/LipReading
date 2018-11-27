@@ -134,12 +134,13 @@ def _generate_dataview(vid_path, captions, gen_vtx=False, timedelay=0):
     face_lmks = np.array(face_lmks)
     if gen_vtx:
       face_vtx = np.array(face_vtx)
-    if len(face_lmks.shape) == 3 and len(face_vtx.shape) == 3:
+    if len(face_lmks.shape) == 3:
       dataview['s_e'].append(s_e)
       dataview['cap'].append(cap)
       dataview['face_lmk_seq'].append(face_lmks)
       if gen_vtx:
-        dataview['face_vtx_seq'].append(face_vtx)
+        if len(face_vtx.shape) == 3:
+          dataview['face_vtx_seq'].append(face_vtx)
 
   # Convert Python lists to np.ndarray, and return.
   for k, v in dataview.items():
