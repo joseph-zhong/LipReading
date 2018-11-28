@@ -4,15 +4,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 _ALLOWED_RNN_TYPES = {'LSTM', 'GRU', 'RNN'}
+_ALLOWED_FRAME_PROCESSING = {'flatten'}
 
 class VideoEncoder(nn.Module):
-    def __init__(self, frame_dim, hidden_size,
+    def __init__(self, frame_dim, hidden_size, frame_processing='flatten',
                  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
         super(VideoEncoder, self).__init__()
+        assert frame_processing in _ALLOWED_FRAME_PROCESSING
         assert rnn_type in _ALLOWED_RNN_TYPES
 
         self.frame_dim = frame_dim
         self.hidden_size = hidden_size
+        self.frame_processing = frame_processing
         self.rnn_type = rnn_type
         self.num_layers = num_layers
         self.bidirectional = bidirectional
@@ -26,9 +29,12 @@ class VideoEncoder(nn.Module):
                 frames: torch.FloatTensor,
                 frame_lens: torch.LongTensor):
         """
-        frames: (batch_size, seq_len, frame_dim)
+        frames: (batch_size, seq_len, num_lmks, lmk_dim)
         frame_lens: (batch_size, )
         """
+        if self.frame_processing == 'flatten':
+            frames = frames.reshape(frames.shape[0], frames.shape[1], -1)
+
         # Reverse sorts the batch by unpadded seq_len.
         (sorted_frames, sorted_frame_lens,
             restoration_indices, _) = sort_batch_by_length(frames, frame_lens)
