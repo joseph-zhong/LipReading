@@ -320,12 +320,15 @@ class FrameCaptionSentenceDataset(_data.Dataset):
     # `[self.labels_map.get(x) for x in cap]`?
     # return list(filter(None, [self.labels_map.get(x) for x in list(cap)]))
     # Ah, it's actually different in that 'None' values are ignored.
-    res = [_markers2Id[BOS]]
+    res = []
     for cap in caps:
+      ids = [_markers2Id[BOS]]
       # Gets index of character for caption. UNK id if for whatever reason is not in dataset.
-      ids = np.array([self.char2idx.get(x, _markers2Id[UNK]) for x in list(cap)])
+      ids.extend([self.char2idx.get(x, _markers2Id[UNK]) for x in list(cap)])
+      ids.append(_markers2Id[EOS])
+      ids = np.array(ids)
+      assert len(ids) > 2 and ids[0] == _markers2Id[BOS] and ids[-1] == _markers2Id[EOS]
       res.append(ids)
-    res.append(_markers2Id[EOS])
     return res
 
 def _collate_sentences_fn(batches):
@@ -339,8 +342,8 @@ def _collate_sentences_fn(batches):
     # pad_size[dim] = seq_len - vec.size(dim)
     # res = torch.cat([vec, torch.zeros(*pad_size)], dim=dim)
     assert len(seqs) > 0 and all(x.shape[1:] == seqs[0].shape[1:] for x in seqs)
-    lens = [len(x) for x in seqs]
-    max_seq_len = np.max(lens)
+    lens = torch.LongTensor([len(x) for x in seqs])
+    max_seq_len = torch.max(lens)
 
     # padded_seq_dims: (batch, max_seq_len, ...).
     padded_seq_dims = (len(seqs), max_seq_len,) + seqs[0].shape[1:]
@@ -362,7 +365,7 @@ def _collate_sentences_fn(batches):
   src_seqs = src_seqs.transpose(0, 1)
   tgt_seqs = tgt_seqs.transpose(0, 1)
 
-  return frames, captions, src_seqs, tgt_seqs, src_lens, tgt_lens
+  return src_seqs, src_lens, tgt_seqs, tgt_lens
 
 # REVIEW josephz: Is this also over-kill?
 class BucketingSampler(_data.Sampler):
