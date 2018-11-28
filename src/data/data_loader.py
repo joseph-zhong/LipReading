@@ -358,12 +358,9 @@ def _collate_sentences_fn(batches):
   frames, captions = zip(*batches)
 
   # Merge sequences (from tuple of 1D tensor to 2D tensor)
+  # (batch, seq_len, ...)
   src_seqs, src_lens = _pad(frames[0])
   tgt_seqs, tgt_lens = _pad(captions[0])
-
-  # (batch, seq_len) => (seq_len, batch)
-  src_seqs = src_seqs.transpose(0, 1)
-  tgt_seqs = tgt_seqs.transpose(0, 1)
 
   return src_seqs, src_lens, tgt_seqs, tgt_lens
 
