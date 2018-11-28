@@ -8,7 +8,7 @@ _ALLOWED_RNN_TYPES = {'LSTM', 'GRU', 'RNN'}
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size,
                  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
-        super(VideoEncoder).__init__()
+        super(VideoEncoder, self).__init__()
         assert rnn_type in _ALLOWED_RNN_TYPES
 
         self.frame_dim = frame_dim
@@ -77,7 +77,7 @@ class VideoEncoder(nn.Module):
 
 class CharDecodingStep(nn.Module):
     def __init__(self, encoder: VideoEncoder, char_dim, output_size, char_padding_idx, rnn_dropout=0):
-        super(CharDecodingStep).__init__()
+        super(CharDecodingStep, self).__init__()
 
         self.hidden_size = encoder.hidden_size * (2 if encoder.bidirectional else 1)
         self.rnn_type = encoder.rnn_type
