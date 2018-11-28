@@ -8,6 +8,8 @@ def train(encoder, decoding_step, data_loader, opt, device,
     """
     Assumes that the sequences given all begin with BOS and end with EOS
     """
+    encoder.train()
+    decoding_step.train()
     for frames, frame_lens, chars, char_lens in data_loader:
         batch_size = frames.shape[0]
         max_char_len = char_lens.max()
