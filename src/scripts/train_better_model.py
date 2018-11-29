@@ -34,9 +34,11 @@ def train(encoder, decoding_step, data_loader, opt, device,
 
             output_log_probs, prev_state = decoding_step(input_, prev_state,
                                                          frame_lens, encoder_hidden_states)
-            loss += F.nll_loss(output_log_probs, chars[:,i+1], ignore_index=char2idx[PAD], reduction='sum')
+            loss += F.nll_loss(output_log_probs, chars[:,i+1], ignore_index=char2idx[PAD], reduction='mean')
             prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)
 
+        loss /= max_char_len - 1
+        print(f'loss: {loss}')
         loss.backward()
         if grad_norm is not None:
             torch.nn.utils.clip_grad_norm_(encoder.parameters(), grad_norm)
