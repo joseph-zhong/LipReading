@@ -1,10 +1,10 @@
 import torch
 import torch.nn.functional as F
 
-from src.data.data_loader import BOS, EOS
+from src.data.data_loader import BOS, EOS, PAD
 
 def train(encoder, decoding_step, data_loader, opt, device,
-          padding_idx, char2idx, teacher_forcing_ratio=1, grad_norm=None):
+          char2idx, teacher_forcing_ratio=1, grad_norm=None):
     """
     Assumes that the sequences given all begin with BOS and end with EOS
     """
@@ -29,8 +29,8 @@ def train(encoder, decoding_step, data_loader, opt, device,
             if input_ == char2idx(EOS):
                 break
             output_log_probs, prev_state = decoding_step(input_, prev_state,
-                                                     frame_lens, encoder_hidden_states)
-            loss += F.nll_loss(output_log_probs, chars[:,i+1], ignore_index=padding_idx, reduction='sum')
+                                                         frame_lens, encoder_hidden_states)
+            loss += F.nll_loss(output_log_probs, chars[:,i+1], ignore_index=char2idx[PAD], reduction='sum')
             prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)
 
         loss.backward()
