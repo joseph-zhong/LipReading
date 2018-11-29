@@ -44,3 +44,41 @@ def train(encoder, decoding_step, data_loader, opt, device,
             torch.nn.utils.clip_grad_norm_(encoder.parameters(), grad_norm)
             torch.nn.utils.clip_grad_norm_(decoding_step.parameters(), grad_norm)
         opt.step()
+
+def eval(encoder, decoding_step, data_loader, device, char2idx):
+    encoder.eval()
+    decoding_step.eval()
+
+    loss = 0
+    correct = 0
+    count = 0
+    with torch.no_grad():
+        for frames, frame_lens, chars, char_lens in data_loader:
+            assert (chars[:,0].squeeze() == char2idx[BOS]).all()
+            assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
+            batch_size = frames.shape[0]
+            max_char_len = char_lens.max()
+
+            frames, frame_lens = frames.to(device), frame_lens.to(device)
+            chars, char_lens = chars.to(device), char_lens.to(device)
+
+            encoder_hidden_states, prev_state = encoder(frames, frame_lens)
+
+            prev_output = torch.LongTensor([char2idx[BOS]] * batch_size).to(device)
+            for i in range(max_char_len - 1):
+                input_ = chars[:,i]
+
+                output_log_probs, prev_state = decoding_step(input_, prev_state,
+                                                            frame_lens, encoder_hidden_states)
+                loss += F.nll_loss(output_log_probs, chars[:,i+1], ignore_index=char2idx[PAD], reduction='sum')
+                prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)  # (batch_size, )
+
+                mask = chars[:,i+1] != char2idx[PAD]
+                correct += ((prev_output == chars[:,i+1]) * mask).sum()
+
+            count += (chars[:,1:] != char2idx[PAD]).sum()
+
+    loss /= count
+    print(f'loss: {loss}')
+    print(f'CER: {(count - correct) / count}')
+    return loss, correct, count
