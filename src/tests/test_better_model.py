@@ -46,7 +46,7 @@ decoding_step = _better_model.CharDecodingStep(encoder, char_dim=1, output_size=
 # Train.
 learning_rate = 3e-4
 _train.train(encoder, decoding_step, data_loader,
-  opt=torch.optim.Adam(encoder.parameters(), lr=learning_rate),
+  opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
   device=torch.device('cpu'), # device=torch.device('cuda'),
   padding_idx=_data_loader._markers2Id[_data_loader.PAD],
   char2idx=dataset.char2idx,
