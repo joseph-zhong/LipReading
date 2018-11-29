@@ -16,6 +16,7 @@ signals as input to map to characters and words.
 - [Architecture](#architecture): High level pipeline
   - [Vision Pipeline](#vision-pipeline)
   - [NLP Pipeline](#nlp-pipeline)
+  - [Datasets](#datasets)
 - [Setup](#setup): Quick setup and installation instructions
   - [SpaCy Setup](#spacy-setup): Setup for NLP utilities.
   - [Data Directories Structure](#data-directories-structure): How data files are organized
@@ -62,6 +63,15 @@ Repr. -> (n, y, x, c) -> (n, (box=1, y_i, x_i, w_i, h_i)) -> (n, (idx=68, y, x))
  -> Letters  ->  Words    -> Language Model 
  -> (chars,) ->  (words,) -> (sentences,)
 ```
+
+### Datasets
+
+- `all`: 926 videos (projected, not generated yet)
+- `large`: 464 videos (failed at 35/464)
+- `medium`: 104 videos (currently at 37/104)
+- `small`: 23 videos 
+- `micro`: 6 videos
+- `nano`: 1 video
 
 ## Setup
 
