@@ -338,21 +338,18 @@ def _collate_sentences_fn(batches):
   # Sort the batch by seq_len.
   # batch = sorted(batch, key=lambda sample: sample[0].size(0), reverse=True)
 
-  def _pad(seqs):
+  def _pad(seqs, dtype=torch.float32):
     """ Pads a batch of sequences of varying seq_len. """
-    # pad_size = list(vec.shape)
-    # pad_size[dim] = seq_len - vec.size(dim)
-    # res = torch.cat([vec, torch.zeros(*pad_size)], dim=dim)
     assert len(seqs) > 0 and all(x.shape[1:] == seqs[0].shape[1:] for x in seqs)
     lens = torch.LongTensor([len(x) for x in seqs])
     max_seq_len = torch.max(lens)
 
     # padded_seq_dims: (batch, max_seq_len, ...).
     padded_seq_dims = (len(seqs), max_seq_len,) + seqs[0].shape[1:]
-    res = torch.zeros(padded_seq_dims, dtype=torch.long)
+    res = torch.zeros(padded_seq_dims, dtype=dtype)
     for i, seq in enumerate(seqs):
       src_len = lens[i]
-      res[i, :src_len] = torch.LongTensor(seq)
+      res[i, :src_len] = torch.Tensor(seq)
     return res, lens
 
   assert all(len(x) == 2 for x in batches)
@@ -361,8 +358,8 @@ def _collate_sentences_fn(batches):
 
   # Merge sequences (from tuple of 1D tensor to 2D tensor)
   # (batch, seq_len, ...)
-  src_seqs, src_lens = _pad(frames[0])
-  tgt_seqs, tgt_lens = _pad(captions[0])
+  src_seqs, src_lens = _pad(frames[0], dtype=torch.float32)
+  tgt_seqs, tgt_lens = _pad(captions[0], dtype=torch.long)
 
   return src_seqs, src_lens, tgt_seqs, tgt_lens
 
