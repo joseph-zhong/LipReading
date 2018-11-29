@@ -320,6 +320,8 @@ class FrameCaptionSentenceDataset(_data.Dataset):
     # `[self.labels_map.get(x) for x in cap]`?
     # return list(filter(None, [self.labels_map.get(x) for x in list(cap)]))
     # Ah, it's actually different in that 'None' values are ignored.
+    # REVIEW josephz: What is the proper way to convert lists to torch tensors?
+    # In particular, doing torch.from_numpy(np.array([...])) seems quite dumb.
     res = []
     for cap in caps:
       ids = [_markers2Id[BOS]]
@@ -347,7 +349,7 @@ def _collate_sentences_fn(batches):
 
     # padded_seq_dims: (batch, max_seq_len, ...).
     padded_seq_dims = (len(seqs), max_seq_len,) + seqs[0].shape[1:]
-    res = torch.zeros(padded_seq_dims)
+    res = torch.zeros(padded_seq_dims, dtype=torch.long)
     for i, seq in enumerate(seqs):
       src_len = lens[i]
       res[i, :src_len] = torch.LongTensor(seq)
