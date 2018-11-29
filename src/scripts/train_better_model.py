@@ -11,6 +11,8 @@ def train(encoder, decoding_step, data_loader, opt, device,
     encoder.train()
     decoding_step.train()
     for frames, frame_lens, chars, char_lens in data_loader:
+        assert (chars[:,0].squeeze() == char2idx[BOS]).all()
+        assert (chars.index_select(1, char_lens).squeeze() == char2idx[EOS]).all()
         batch_size = frames.shape[0]
         max_char_len = char_lens.max()
 
