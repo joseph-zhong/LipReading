@@ -38,7 +38,7 @@ def train(encoder, decoding_step, data_loader, opt, device,
             prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)
 
         loss /= (chars[:,1:] != char2idx[PAD]).sum()
-        print(f'loss: {loss}')
+        print(f'training loss: {loss}')
         loss.backward()
         if grad_norm is not None:
             torch.nn.utils.clip_grad_norm_(encoder.parameters(), grad_norm)
@@ -79,6 +79,6 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
             count += (chars[:,1:] != char2idx[PAD]).sum()
 
     loss /= count
-    print(f'loss: {loss}')
-    print(f'CER: {(count - correct) / count}')
+    print(f'test loss: {loss}')
+    print(f'CER: {(count - correct).float() / count}')
     return loss, correct, count
