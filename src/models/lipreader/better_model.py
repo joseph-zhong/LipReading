@@ -1,7 +1,6 @@
 from allennlp.nn.util import masked_log_softmax, masked_softmax, sort_batch_by_length
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.data.data_loader import BOS, PAD
 
@@ -148,7 +147,7 @@ class CharDecodingStep(nn.Module):
 
         # (batch_size, hidden_size)
         new_hidden_state = self.concat_layer(torch.cat([context, hidden_state.squeeze(dim=1)], dim=1))
-        new_hidden_state = F.tanh(new_hidden_state)
+        new_hidden_state = new_hidden_state.tanh()
 
         # (batch_size, output_size)
         output_logits = self.output_proj(new_hidden_state)
