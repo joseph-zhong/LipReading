@@ -12,6 +12,9 @@ import src.scripts.train_better_model as _train
 
 import src.models.lipreader.better_model as _better_model
 
+torch.manual_seed(123456)
+torch.cuda.manual_seed_all(123456)
+
 # Init Data.
 batch=4
 num_workers=1
