@@ -7,12 +7,17 @@ def train(encoder, decoding_step, data_loader, opt, device,
           char2idx, teacher_forcing_ratio=1, grad_norm=None):
     """
     Assumes that the sequences given all begin with BOS and end with EOS
+    data_loader yields:
+        frames: FloatTensor
+        frame_lens: LongTensor
+        chars: LongTensor
+        char_lens: LongTensor
     """
     encoder.train()
     decoding_step.train()
     for frames, frame_lens, chars, char_lens in data_loader:
         assert (chars[:,0].squeeze() == char2idx[BOS]).all()
-        assert (chars.index_select(1, char_lens).squeeze() == char2idx[EOS]).all()
+        assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
         batch_size = frames.shape[0]
         max_char_len = char_lens.max()
 
@@ -26,8 +31,7 @@ def train(encoder, decoding_step, data_loader, opt, device,
         for i in range(max_char_len - 1):
             teacher_forcing = torch.rand(1) < teacher_forcing_ratio
             input_ = chars[:,i] if teacher_forcing else prev_output
-            if input_ == char2idx(EOS):
-                break
+
             output_log_probs, prev_state = decoding_step(input_, prev_state,
                                                          frame_lens, encoder_hidden_states)
             loss += F.nll_loss(output_log_probs, chars[:,i+1], ignore_index=char2idx[PAD], reduction='sum')
