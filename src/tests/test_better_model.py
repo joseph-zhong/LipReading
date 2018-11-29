@@ -36,10 +36,11 @@ data_loader = _data.DataLoader(dataset, batch_size=batch, num_workers=num_worker
 # Init Models.
 frame_dim = 68 * 3
 hidden_size = 700
+char_dim = 300
 encoder = _better_model.VideoEncoder(frame_dim, hidden_size,
   rnn_type='LSTM', num_layers=1, bidirectional=True,
   rnn_dropout=0)
-decoding_step = _better_model.CharDecodingStep(encoder, char_dim=1, output_size=200,
+decoding_step = _better_model.CharDecodingStep(encoder, char_dim=char_dim, output_size=len(dataset.char2idx),
   char_padding_idx=_data_loader._markers2Id[_data_loader.PAD],
   rnn_dropout=0)
 
