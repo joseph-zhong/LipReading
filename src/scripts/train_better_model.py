@@ -18,6 +18,7 @@ def train(encoder, decoding_step, data_loader, opt, device,
     for frames, frame_lens, chars, char_lens in data_loader:
         assert (chars[:,0].squeeze() == char2idx[BOS]).all()
         assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
+        assert (chars[:,1:] != char2idx[PAD]).sum() == char_lens.sum() - frames.shape[0]
         batch_size = frames.shape[0]
         max_char_len = char_lens.max()
 
@@ -56,6 +57,7 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
         for frames, frame_lens, chars, char_lens in data_loader:
             assert (chars[:,0].squeeze() == char2idx[BOS]).all()
             assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
+            assert (chars[:,1:] != char2idx[PAD]).sum() == char_lens.sum() - frames.shape[0]
             batch_size = frames.shape[0]
             max_char_len = char_lens.max()
 
