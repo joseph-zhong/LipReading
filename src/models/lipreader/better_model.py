@@ -83,7 +83,10 @@ class VideoEncoder(nn.Module):
         return final_state
 
 class CharDecodingStep(nn.Module):
-    def __init__(self, encoder: VideoEncoder, char_dim, output_size, char2idx, rnn_dropout=0):
+    def __init__(self, encoder: VideoEncoder, char_dim, vocab_size, char2idx, rnn_dropout=0):
+        """
+        vocab_size includes all the special tokens
+        """
         super(CharDecodingStep, self).__init__()
 
         self.hidden_size = encoder.hidden_size * (2 if encoder.bidirectional else 1)
@@ -91,19 +94,19 @@ class CharDecodingStep(nn.Module):
         self.num_layers = encoder.num_layers
         self.rnn_dropout = rnn_dropout
         self.char_dim = char_dim
-        self.output_size = output_size
+        self.vocab_size = vocab_size
         self.char2idx = char2idx
 
-        self.output_mask = torch.ones(self.output_size)
+        self.output_mask = torch.ones(self.vocab_size)
         self.output_mask[self.char2idx[PAD]] = 0
         self.output_mask[self.char2idx[BOS]] = 0
 
-        self.embedding = nn.Embedding(self.output_size, self.char_dim, padding_idx=self.char2idx[PAD])
+        self.embedding = nn.Embedding(self.vocab_size, self.char_dim, padding_idx=self.char2idx[PAD])
         self.rnn = getattr(nn, self.rnn_type)(self.char_dim, self.hidden_size,
                                               num_layers=self.num_layers, batch_first=True, dropout=self.rnn_dropout)
         self.attn_proj = nn.Linear(2 * self.hidden_size, 1)
         self.concat_layer = nn.Linear(2 * self.hidden_size, self.hidden_size)
-        self.output_proj = nn.Linear(self.hidden_size, self.output_size)
+        self.output_proj = nn.Linear(self.hidden_size, self.vocab_size)
 
     def forward(self,
                 input_: torch.LongTensor,
@@ -149,8 +152,8 @@ class CharDecodingStep(nn.Module):
         new_hidden_state = self.concat_layer(torch.cat([context, hidden_state.squeeze(dim=1)], dim=1))
         new_hidden_state = new_hidden_state.tanh()
 
-        # (batch_size, output_size)
+        # (batch_size, vocab_size)
         output_logits = self.output_proj(new_hidden_state)
-        output_log_probs = masked_log_softmax(output_logits, self.output_mask.expand(batch_size, self.output_size), dim=-1)
+        output_log_probs = masked_log_softmax(output_logits, self.output_mask.expand(batch_size, self.vocab_size), dim=-1)
 
         return output_log_probs, final_state
