@@ -9,10 +9,17 @@ _ALLOWED_FRAME_PROCESSING = {'flatten'}
 
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size, frame_processing='flatten',
-                 rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0):
+                 rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0,
+                 enable_ctc=False, vocab_size=-1, char2idx=None):
+        """
+        When enable_ctc=True, vocab_size and char2idx must be provided
+        vocab_size includes all the special tokens
+        """
         super(VideoEncoder, self).__init__()
         assert frame_processing in _ALLOWED_FRAME_PROCESSING
         assert rnn_type in _ALLOWED_RNN_TYPES
+        if enable_ctc:
+            assert vocab_size > 0 and char2idx is not None
 
         self.frame_dim = frame_dim
         self.hidden_size = hidden_size
@@ -21,10 +28,22 @@ class VideoEncoder(nn.Module):
         self.num_layers = num_layers
         self.bidirectional = bidirectional
         self.rnn_dropout = rnn_dropout
+        self.enable_ctc = enable_ctc
+        if self.enable_ctc:
+            self.vocab_size = vocab_size
+            self.adj_vocab_size = self.vocab_size + 1
+            self.char2idx = char2idx
+            self.num_dirs = 2 if self.bidirectional else 1
+
+            self.output_mask = torch.ones(self.adj_vocab_size)
+            self.output_mask[self.char2idx[PAD]] = 0
+            self.output_mask[self.char2idx[BOS]] = 0
 
         self.rnn = getattr(nn, self.rnn_type)(self.frame_dim, self.hidden_size,
                                               num_layers=self.num_layers, bidirectional=self.bidirectional,
                                               batch_first=True, dropout=self.rnn_dropout)
+        if self.enable_ctc:
+            self.output_proj = nn.Linear(self.num_dirs * self.hidden_size, self.adj_vocab_size)
 
     def forward(self,
                 frames: torch.FloatTensor,
@@ -64,7 +83,12 @@ class VideoEncoder(nn.Module):
         else:
             final_state = final_state.index_select(1, restoration_indices)
 
-        return hidden_states, final_state
+        if self.enable_ctc:
+            output_logits = self.output_proj(hidden_states)
+            output_log_probs = masked_log_softmax(output_logits, self.output_mask.expand(output_logits.shape[0], self.adj_vocab_size), dim=-1)
+            return output_log_probs, hidden_states, final_state
+        else:
+            return hidden_states, final_state
 
     def _cat_directions(self, final_state):
         """

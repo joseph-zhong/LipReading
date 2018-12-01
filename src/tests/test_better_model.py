@@ -74,9 +74,10 @@ frame_dim = 68 * 3
 hidden_size = 700
 char_dim = 300
 encoder = _better_model.VideoEncoder(frame_dim, hidden_size,
-  rnn_type='LSTM', num_layers=1, bidirectional=True,
-  rnn_dropout=0)
-decoding_step = _better_model.CharDecodingStep(encoder, char_dim=char_dim, output_size=len(train_dataset.char2idx),
+  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0,
+  enable_ctc=True, vocab_size=len(train_dataset.char2idx), char2idx=train_dataset.char2idx)
+decoding_step = _better_model.CharDecodingStep(encoder,
+  char_dim=char_dim, vocab_size=len(train_dataset.char2idx),
   char2idx=train_dataset.char2idx,
   rnn_dropout=0)
 
