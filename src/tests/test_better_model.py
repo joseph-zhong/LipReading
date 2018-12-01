@@ -18,7 +18,9 @@ torch.cuda.manual_seed_all(123456)
 # Init Data.
 batch=4
 num_workers=1
-dataset="StephenColbert/nano1"
+dataset="StephenColbert/nano"
+sentence_dataset=True
+threshold=0.8
 weights_dir = _util.getRelWeightsPath(dataset)
 dataset_dir = _util.getRelDatasetsPath(dataset)
 raw_dir = _util.getRelRawPath(dataset)
@@ -32,16 +34,21 @@ with open(labels_path, 'r') as fin:
   labels = json.load(fin)
 
 ## Init dataset and dataset loader.
-train_dataset = _data_loader.FrameCaptionSentenceDataset(vid_id_dirs, labels, batch_size=batch)
+if sentence_dataset:
+  train_dataset = _data_loader.FrameCaptionSentenceDataset(vid_id_dirs, labels)
+else:
+  train_dataset = _data_loader.FrameCaptionDataset(vid_id_dirs, labels)
+
 train_data_loader = _data.DataLoader(train_dataset, batch_size=batch, num_workers=num_workers,
-  collate_fn=_data_loader._collate_sentences_fn)
+  collate_fn=_data_loader._collate_fn)
+print("train_dataset len:", len(train_dataset))
 
 batch=4
 num_workers=1
-dataset="StephenColbert/nano"
-weights_dir = _util.getRelWeightsPath(dataset)
-dataset_dir = _util.getRelDatasetsPath(dataset)
-raw_dir = _util.getRelRawPath(dataset)
+test_dataset="StephenColbert/nano1"
+weights_dir = _util.getRelWeightsPath(test_dataset)
+dataset_dir = _util.getRelDatasetsPath(test_dataset)
+raw_dir = _util.getRelRawPath(test_dataset)
 vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*'))
 vid_id_dirs.sort()
 
@@ -52,10 +59,14 @@ with open(labels_path, 'r') as fin:
   labels = json.load(fin)
 
 ## Init dataset and dataset loader.
-test_dataset = _data_loader.FrameCaptionSentenceDataset(vid_id_dirs, labels, batch_size=batch)
-test_data_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers,
-  collate_fn=_data_loader._collate_sentences_fn)
+if sentence_dataset:
+  test_dataset = _data_loader.FrameCaptionSentenceDataset(vid_id_dirs, labels)
+else:
+  test_dataset = _data_loader.FrameCaptionDataset(vid_id_dirs, labels)
 
+test_data_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers,
+  collate_fn=_data_loader._collate_fn)
+print("test_dataset len:", len(test_dataset))
 assert train_dataset.char2idx == test_dataset.char2idx
 
 # Init Models.
