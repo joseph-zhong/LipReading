@@ -6,6 +6,7 @@ from src.data.data_loader import BOS, PAD
 
 _ALLOWED_RNN_TYPES = {'LSTM', 'GRU', 'RNN'}
 _ALLOWED_FRAME_PROCESSING = {'flatten'}
+_ALLOWED_ATTENTION_TYPES = {'none', 'dot', 'general', '1_layer_nn', 'concat'}
 
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size, frame_processing='flatten',
@@ -107,12 +108,15 @@ class VideoEncoder(nn.Module):
         return final_state
 
 class CharDecodingStep(nn.Module):
-    def __init__(self, encoder: VideoEncoder, char_dim, vocab_size, char2idx, rnn_dropout=0):
+    def __init__(self, encoder: VideoEncoder, char_dim, vocab_size, char2idx, rnn_dropout=0, attention_type='none', attn_hidden_size=-1):
         """
         vocab_size includes all the special tokens
         """
         super(CharDecodingStep, self).__init__()
 
+        assert attention_type in _ALLOWED_ATTENTION_TYPES
+        if attention_type == 'concat':
+            assert attn_hidden_size > 0
         self.hidden_size = encoder.hidden_size * (2 if encoder.bidirectional else 1)
         self.rnn_type = encoder.rnn_type
         self.num_layers = encoder.num_layers
@@ -120,15 +124,21 @@ class CharDecodingStep(nn.Module):
         self.char_dim = char_dim
         self.vocab_size = vocab_size
         self.char2idx = char2idx
+        self.attention_type = attention_type
 
         self.output_mask = torch.ones(self.vocab_size)
         self.output_mask[self.char2idx[PAD]] = 0
         self.output_mask[self.char2idx[BOS]] = 0
-
         self.embedding = nn.Embedding(self.vocab_size, self.char_dim, padding_idx=self.char2idx[PAD])
         self.rnn = getattr(nn, self.rnn_type)(self.char_dim, self.hidden_size,
                                               num_layers=self.num_layers, batch_first=True, dropout=self.rnn_dropout)
-        self.attn_proj = nn.Linear(2 * self.hidden_size, 1)
+        if attention_type == '1_layer_nn':
+            self.attn_proj_1_layer_nn = nn.Linear(2 * self.hidden_size, 1)
+        elif attention_type == 'general':
+            self.attn_proj_general = nn.Linear(self.hidden_size, self.hidden_size)
+        elif attention_type == 'concat':
+            self.attn_proj_layer1 = nn.Linear(2 * self.hidden_size, attn_hidden_size)
+            self.attn_proj_layer2 = nn.Linear(attn_hidden_size, 1)
         self.concat_layer = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.output_proj = nn.Linear(self.hidden_size, self.vocab_size)
 
@@ -151,7 +161,6 @@ class CharDecodingStep(nn.Module):
         if input_.is_cuda:
             encoder_mask = encoder_mask.cuda()
             self.output_mask = self.output_mask.cuda()
-
         # (batch_size, char_dim)
         embedded_char = self.embedding(input_)
         # (batch_size, seq_len=1, char_dim)
@@ -163,21 +172,51 @@ class CharDecodingStep(nn.Module):
 
         # (batch_size, en_seq_len, hidden_size)
         expanded_hidden_state = hidden_state.expand_as(encoder_hidden_states)
-        # (batch_size, en_seq_len, hidden_size * 2)
-        concat_hidden_state = torch.cat([encoder_hidden_states, expanded_hidden_state], dim=2)
-        # (batch_size, en_seq_len)
-        attn_logits = self.attn_proj(concat_hidden_state).squeeze(dim=-1)
-        # (batch_size, 1, en_seq_len)
-        attn_weights = masked_softmax(attn_logits, encoder_mask, dim=-1).unsqueeze(dim=1)
-        # (batch_size, hidden_size)
-        context = attn_weights.bmm(encoder_hidden_states).squeeze(dim=1)
 
-        # (batch_size, hidden_size)
-        new_hidden_state = self.concat_layer(torch.cat([context, hidden_state.squeeze(dim=1)], dim=1))
-        new_hidden_state = new_hidden_state.tanh()
+        if self.attention_type == '1_layer_nn':
+            # (batch_size, en_seq_len, hidden_size * 2)
+            concat_hidden_state = torch.cat([encoder_hidden_states, expanded_hidden_state], dim=2)
+            # (batch_size, en_seq_len)
+            attn_logits = self.attn_proj_1_layer_nn(concat_hidden_state).squeeze(dim=-1)
+        elif self.attention_type == 'general':
+            # (batch_size, en_seq_len, 1, hidden_size)
+            expanded_hidden_state = expanded_hidden_state.unsqueeze(dim=2)
+            # (batch_size, en_seq_len, hidden_size, 1)
+            encoder_hidden_states = encoder_hidden_states.unsqueeze(dim=-1)
+            # (batch_size, en_seq_len, 1, hidden_size)
+            intermediate_step = self.attn_proj_general(expanded_hidden_state)
+            # (batch_size * en_seq_len, 1, 1)
+            # (batch_size, en_seq_len, 1, hidden_size) x (batch_size, en_seq_len, hidden_size, 1)
+            attn_logits = intermediate_step.view(-1, 1, self.hidden_size).bmm(encoder_hidden_states.view(-1, self.hidden_size, 1))
+            # (batch_size, en_seq_len)
+            attn_logits = attn_logits.squeeze(dim=-1).squeeze(dim=-1).view(batch_size, -1)
+            # (batch_size, en_seq_len, hidden_size)
+            expanded_hidden_state = expanded_hidden_state.squeeze(dim=2)
+            # (batch_size, en_seq_len, hidden_size)
+            encoder_hidden_states = encoder_hidden_states.squeeze(dim=-1)
+        elif self.attention_type == 'dot':
+            # (batch_size, en_seq_len)
+            attn_logits = torch.sum(expanded_hidden_state.mul(encoder_hidden_states), dim=-1)
+        elif self.attention_type == 'concat':
+            # (batch_size, en_seq_len, hidden_size * 2)
+            concat_hidden_state = torch.cat([encoder_hidden_states, expanded_hidden_state], dim=2)
+            # (batch_size, en_seq_len, attn_hidden_size)
+            attn_logits = self.attn_proj_layer1(concat_hidden_state).tanh()
+            # (batch_size, en_seq_len)
+            attn_logits = self.attn_proj_layer2(attn_logits).squeeze(dim=-1)
 
-        # (batch_size, vocab_size)
-        output_logits = self.output_proj(new_hidden_state)
+        if self.attention_type != 'none':
+            # (batch_size, 1, en_seq_len)
+            attn_weights = masked_softmax(attn_logits, encoder_mask, dim=-1).unsqueeze(dim=1)
+            # (batch_size, hidden_size)
+            context = attn_weights.bmm(encoder_hidden_states).squeeze(dim=1)
+            # (batch_size, hidden_size)
+            new_hidden_state = self.concat_layer(torch.cat([context, hidden_state.squeeze(dim=1)], dim=1))
+            new_hidden_state = new_hidden_state.tanh()
+            # (batch_size, vocab_size)
+            output_logits = self.output_proj(new_hidden_state)
+        else:
+            output_logits = self.output_proj(hidden_state.squeeze(dim=1))
         output_log_probs = masked_log_softmax(output_logits, self.output_mask.expand(batch_size, self.vocab_size), dim=-1)
 
         return output_log_probs, final_state
