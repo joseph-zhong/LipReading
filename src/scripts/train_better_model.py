@@ -39,7 +39,7 @@ def train(encoder, decoding_step, data_loader, opt, device,
 
         if use_ctc:
             encoder_outputs, encoder_hidden_states, prev_state = encoder(frames, frame_lens)
-            ctc_loss += F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size, reduction='mean')
+            ctc_loss += F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size - 1, reduction='mean')
         else:
             encoder_hidden_states, prev_state = encoder(frames, frame_lens)
 
@@ -95,7 +95,7 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
 
             if use_ctc:
                 encoder_outputs, encoder_hidden_states, prev_state = encoder(frames, frame_lens)
-                ctc_loss += F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size, reduction='sum')
+                ctc_loss += F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size - 1, reduction='sum')
             else:
                 encoder_hidden_states, prev_state = encoder(frames, frame_lens)
 
