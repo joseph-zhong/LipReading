@@ -198,8 +198,8 @@ def generate_dataview(
       i, len(vid_paths)-1, dst_path)
 
     # If force mode, or file doesn't exist, process video, else continue.
-    if force or not os.path.isfile(dst_path):
-      if force and os.path.isfile(dst_path):
+    if force or not os.path.isdir(dst_path):
+      if force and os.path.isdir(dst_path):
         _getSharedLogger().warning(
           "\tVideo (%4d/%4d): FORCE MODE ENABLED!!!! Overwriting existing file: '%s'...",
           i, len(vid_paths) - 1, dst_path)
