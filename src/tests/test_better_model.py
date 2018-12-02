@@ -18,7 +18,7 @@ torch.cuda.manual_seed_all(123456)
 # Init Data.
 batch=4
 num_workers=1
-dataset="StephenColbert/nano"
+dataset="StephenColbert/micro_no_vtx"
 sentence_dataset=True
 threshold=0.8
 weights_dir = _util.getRelWeightsPath(dataset)
@@ -45,7 +45,7 @@ print("train_dataset len:", len(train_dataset))
 
 batch=4
 num_workers=1
-test_dataset="StephenColbert/nano1"
+test_dataset="StephenColbert/nano"
 weights_dir = _util.getRelWeightsPath(test_dataset)
 dataset_dir = _util.getRelDatasetsPath(test_dataset)
 raw_dir = _util.getRelRawPath(test_dataset)
