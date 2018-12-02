@@ -24,21 +24,14 @@ import src.utils.cmd_line as _cmd
 import src.utils.utility as _util
 import src.data.data_loader as _data_loader
 
-# josephz: Baidu's 'fast' implementation of CTC.
-# See https://github.com/baidu-research/warp-ctc
-# and the Python bindings: https://github.com/SeanNaren/warp-ctc
-from warpctc_pytorch import CTCLoss
-
 _logger = None
+_labels = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", ">", "?", "@", "[", "]", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
 
 def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
   global _logger
   if _logger is None:
    _logger = _util.getLogger(os.path.basename(__file__).split('.')[0], verbosity=verbosity)
   return _logger
-
-torch.manual_seed(123456)
-torch.cuda.manual_seed_all(123456)
 
 class AverageMeter(object):
   """Computes and stores the average and current value"""
@@ -127,12 +120,13 @@ def _load_or_create_model(
     cer_results = torch.Tensor(epochs)
     wer_results = torch.Tensor(epochs)
 
+    labels_path = os.path.join(weights_dir, 'labels.json')
     try:
-      with open(os.path.join(weights_dir, 'labels.json')) as label_file:
+      with open(labels_path) as label_file:
         labels = str(''.join(json.load(label_file)))
     except:
-      # REVIEW josephz: remove
-      labels = "abcdefghijklmnopqrstuvwxyz1234567890-=+'\" "
+      labels = _labels
+      _getSharedLogger().warning("Could not open '{}'... using hardcoded labels: '{}'".format(labels_path, labels))
 
     rnn_type = rnn_type.lower()
     assert rnn_type in _model.supported_rnns, "rnn_type should be either lstm, rnn or gru"
@@ -207,6 +201,7 @@ def train(
   silent=False,
   tensorboard=False,
   continue_from=-1,
+  seed=123456,
 ):
   """ Runs the primary training loop.
 
@@ -228,6 +223,9 @@ def train(
   :param tensorboard: Turn on tensorboard graphing.
   :param continue_from: Checkpoint number to start from.
   """
+  torch.manual_seed(seed)
+  torch.cuda.manual_seed_all(seed)
+
   weights_dir = _util.getRelWeightsPath(dataset)
   dataset_dir = _util.getRelDatasetsPath(dataset)
 
