@@ -8,7 +8,7 @@ import torch.utils.data as _data
 
 import src.utils.utility as _util
 import src.data.data_loader as _data_loader
-import src.scripts.train_better_model as _train
+import src.train.train_better_model as _train
 
 import src.models.lipreader.better_model as _better_model
 
