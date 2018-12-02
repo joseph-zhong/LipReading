@@ -75,6 +75,7 @@ class FrameCaptionDataset(_data.Dataset):
 
     # REVIEW JOSEPHZ: filter out frames which are mostly occluded.
     frames, captions = FrameCaptionDataset.filter_occlusions(frames, captions, start_ends, fps=fps, threshold=threshold)
+    frames, captions = FrameCaptionDataset.sort_by_seqlen(frames, captions)
 
     num_elements = len(captions)
 
@@ -134,10 +135,18 @@ class FrameCaptionDataset(_data.Dataset):
     filtered_captions = []
     for f, c, s_e in zip(frames, captions, start_ends):
       start, end = s_e
-      if len(f) >= len(c) and (end - start) * fps * threshold <= len(f):
+      if len(f) > len(c) and (end - start) * fps * threshold <= len(f):
         filtered_frames.append(f)
         filtered_captions.append(c)
     return filtered_frames, filtered_captions
+
+  @staticmethod
+  def sort_by_seqlen(frames, captions):
+    frame_lens = [x.shape[0] for x in frames]
+    indices = np.argsort(frame_lens)
+    sorted_frames = np.array(frames)[indices]
+    sorted_captions = np.array(captions)[indices]
+    return sorted_frames, sorted_captions
 
 # REVIEW josephz: What the fuck does this do????
 # It seems in `dataloader.py` the following is used for
@@ -215,6 +224,7 @@ class FrameCaptionSentenceDataset(_data.Dataset):
     assert all(isinstance(x, str) for x in captions)
 
     frames, captions = FrameCaptionDataset.filter_occlusions(frames, captions, start_ends, fps=fps, threshold=threshold)
+    frames, captions = FrameCaptionDataset.sort_by_seqlen(frames, captions)
     num_elements = len(captions)
 
     # Construct vocabulary.
