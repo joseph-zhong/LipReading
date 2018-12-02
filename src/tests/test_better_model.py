@@ -95,5 +95,5 @@ for i in range(50):
     device=torch.device('cpu'), # device=torch.device('cuda'),
     char2idx=train_dataset.char2idx,
     teacher_forcing_ratio=1,
-    grad_norm=None)
+    grad_norm=50)
   _train.eval(encoder, decoding_step, test_data_loader, torch.device('cpu'), train_dataset.char2idx)
