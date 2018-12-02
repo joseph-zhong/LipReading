@@ -135,7 +135,10 @@ class FrameCaptionDataset(_data.Dataset):
     filtered_captions = []
     for f, c, s_e in zip(frames, captions, start_ends):
       start, end = s_e
-      if len(f) > len(c) and (end - start) * fps * threshold <= len(f):
+      # Filter out frame/caption samples where fewer than 80% of the frames of the total time-window were captured,
+      # as well as requiring that the frame seqlen exceeds the length of the caption by at least two, to account for
+      # later added BOS/EOS tokens.
+      if (end - start) * fps * threshold <= len(f) and len(c) + 2 < len(f):
         filtered_frames.append(f)
         filtered_captions.append(c)
     return filtered_frames, filtered_captions
