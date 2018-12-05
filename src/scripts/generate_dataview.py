@@ -114,7 +114,7 @@ def _generate_dataview(vid_path, captions, gen_vtx=False, timedelay=0):
 
       # Detect face and extract 3d landmarks.
       try:
-        frame_face_lmks, frame_face_vtx = _gen_data(frame, start_frame + i, video_reader.getNumFrames() - 1)
+        frame_face_lmks, frame_face_vtx = _gen_data(frame, start_frame + i, start_frame + len(frames))
         if frame_face_lmks is not None:
           face_lmks.append(frame_face_lmks)
           if gen_vtx:
@@ -125,7 +125,7 @@ def _generate_dataview(vid_path, captions, gen_vtx=False, timedelay=0):
           start_frame + i, video_reader.getNumFrames() - 1)
         exit()
       except Exception as e:
-        _getSharedLogger().error("\tFrame (%4d/%4d): Unxepected exception '%s', skipping caption...",
+        _getSharedLogger().error("\tFrame (%4d/%4d): Unxepected exception '%s', skipping frame...",
           start_frame + i, video_reader.getNumFrames() - 1, e)
         traceback.print_exc()
         break
