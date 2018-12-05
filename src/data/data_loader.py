@@ -61,10 +61,10 @@ def split_dataset(dataset_name, train_split=0.8, rand=None):
 
   return train_vid_ids, val_vid_ids, test_vid_ids
 
-def load_dataset(dataset_name, out_ext='.pkl'):
-  char2idx_path = _util.getRelPicklesPath(dataset_name, 'char2idx' + out_ext)
-  frames_path = _util.getRelPicklesPath(dataset_name, 'frames' + out_ext)
-  captions_path = _util.getRelPicklesPath(dataset_name, 'captions' + out_ext)
+def load_dataset(pickle_dir, out_ext='.pkl'):
+  char2idx_path = os.path.join(pickle_dir, 'char2idx' + out_ext)
+  frames_path = os.path.join(pickle_dir, 'frames' + out_ext)
+  captions_path = os.path.join(pickle_dir, 'captions' + out_ext)
   assert os.path.isfile(char2idx_path), "File not found: '{}'".format(char2idx_path)
   assert os.path.isfile(frames_path), "File not found: '{}'".format(frames_path)
   assert os.path.isfile(captions_path), "File not found: '{}'".format(captions_path)
@@ -174,7 +174,7 @@ class FrameCaptionDataset(_data.Dataset):
         labels=labels, start_end=start_end, cap=cap, frame_type=frame_type, sentence_dataset=sentence_dataset,
         in_ext=in_ext, fps=fps, threshold=threshold)
     else:
-      char2idx, frames, captions = load_dataset(dataset_name, out_ext=out_ext)
+      char2idx, frames, captions = load_dataset(pickle_dir, out_ext=out_ext)
     assert len(frames) == len(captions) > 0
 
     # Cache all rows.
