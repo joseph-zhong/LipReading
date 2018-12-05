@@ -3,6 +3,17 @@ import torch.nn.functional as F
 
 from src.data.data_loader import BOS, EOS, PAD
 
+def ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, blank):
+  assert len(encoder_outputs) == len(labels) == len(frame_lens) == len(label_lens)
+  skipped_indices = []
+  working_indices = []
+  for i, (encoder_output, label, frame_len, label_len) in enumerate(zip(encoder_outputs, labels, frame_lens, label_lens)):
+    if torch.isinf(F.ctc_loss(encoder_outputs[i:i+1].transpose(0, 1), labels[i:i+1], frame_lens[i:i+1], label_lens[i:i+1], blank=blank)):
+      skipped_indices.append(i)
+    else:
+      working_indices.append(i)
+  return skipped_indices, torch.LongTensor(working_indices)
+
 def train(encoder, decoding_step, data_loader, opt, device,
       char2idx, teacher_forcing_ratio=1, grad_norm=None):
   """
@@ -41,7 +52,21 @@ def train(encoder, decoding_step, data_loader, opt, device,
 
     if use_ctc:
       encoder_outputs, encoder_hidden_states, prev_state = encoder(frames, frame_lens)
-      ctc_loss += F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size - 1, reduction='mean')
+
+      curr_ctc_loss = F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size - 1, reduction='mean')
+      if torch.isinf(curr_ctc_loss):
+        print('inf CTC loss occurred in train()...')
+        skipped_indices, working_indices = ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, encoder.adj_vocab_size - 1)
+        if len(working_indices) == 0:
+          print('skipping the entire batch')
+          continue
+        print('skipping indices in batch: ' + str(skipped_indices))
+        curr_ctc_loss = F.ctc_loss(encoder_outputs.index_select(0, working_indices).transpose(0, 1),
+                                    labels.index_select(0, working_indices),
+                                    frame_lens.index_select(0, working_indices),
+                                    label_lens.index_select(0, working_indices),
+                                    blank=encoder.adj_vocab_size - 1, reduction='mean')
+      ctc_loss += curr_ctc_loss
     else:
       encoder_hidden_states, prev_state = encoder(frames, frame_lens)
 
@@ -76,7 +101,6 @@ def train(encoder, decoding_step, data_loader, opt, device,
       avg_ctc_loss /= len(data_loader)
     return avg_decoder_loss, avg_ctc_loss
 
-
 def eval(encoder, decoding_step, data_loader, device, char2idx):
   use_ctc = encoder.enable_ctc
 
@@ -105,7 +129,21 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
 
       if use_ctc:
         encoder_outputs, encoder_hidden_states, prev_state = encoder(frames, frame_lens)
-        ctc_loss += F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size - 1, reduction='sum')
+
+        curr_ctc_loss = F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=encoder.adj_vocab_size - 1, reduction='sum')
+        if torch.isinf(curr_ctc_loss):
+          print('inf CTC loss occurred in eval()...')
+          skipped_indices, working_indices = ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, encoder.adj_vocab_size - 1)
+          if len(working_indices) == 0:
+            print('skipping the entire batch')
+            continue
+          print('skipping indices in batch: ' + str(skipped_indices))
+          curr_ctc_loss = F.ctc_loss(encoder_outputs.index_select(0, working_indices).transpose(0, 1),
+                                     labels.index_select(0, working_indices),
+                                     frame_lens.index_select(0, working_indices),
+                                     label_lens.index_select(0, working_indices),
+                                     blank=encoder.adj_vocab_size - 1, reduction='sum')
+        ctc_loss += curr_ctc_loss
       else:
         encoder_hidden_states, prev_state = encoder(frames, frame_lens)
 

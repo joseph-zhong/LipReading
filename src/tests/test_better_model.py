@@ -19,7 +19,7 @@ torch.cuda.manual_seed_all(123456)
 batch=4
 num_workers=1
 dataset="StephenColbert/micro_no_vtx"
-sentence_dataset=True
+sentence_dataset=False
 threshold=0.8
 weights_dir = _util.getRelWeightsPath(dataset)
 dataset_dir = _util.getRelDatasetsPath(dataset)
