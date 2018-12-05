@@ -65,9 +65,9 @@ def load_dataset(dataset_name, out_ext='.pkl'):
   char2idx_path = _util.getRelPicklesPath(dataset_name, 'char2idx' + out_ext)
   frames_path = _util.getRelPicklesPath(dataset_name, 'frames' + out_ext)
   captions_path = _util.getRelPicklesPath(dataset_name, 'captions' + out_ext)
-  assert os.path.isfile(char2idx_path), "File not found: ".format(char2idx_path)
-  assert os.path.isfile(frames_path), "File not found: ".format(frames_path)
-  assert os.path.isfile(captions_path), "File not found: ".format(captions_path)
+  assert os.path.isfile(char2idx_path), "File not found: '{}'".format(char2idx_path)
+  assert os.path.isfile(frames_path), "File not found: '{}'".format(frames_path)
+  assert os.path.isfile(captions_path), "File not found: '{}'".format(captions_path)
 
   with open(char2idx_path, 'rb') as fin:
     char2idx = pickle.load(fin)
@@ -152,9 +152,9 @@ def _collate_fn(batch):
   return src_seqs, src_lens, tgt_seqs, tgt_lens
 
 class FrameCaptionDataset(_data.Dataset):
-  def __init__(self, dataset_name, vid_ids, labels,
-      start_end='s_e', threshold=0.8, fps=29.97,
-      cap='cap', frame_type='face_lmk_seq',
+  def __init__(self, dataset_name, split_name, vid_ids,
+      labels='labels.json', start_end='s_e', threshold=0.8, fps=29.97,
+      cap='cap', frame_type='face_lmk_seq', sentence_dataset=False,
       in_ext='.npy', out_ext='.pkl',
       refresh=False):
     """ Dataset that loads the video dataview and captions.
@@ -168,9 +168,11 @@ class FrameCaptionDataset(_data.Dataset):
     assert all(os.path.isdir(x) for x in vid_ids)
     assert frame_type in ('face_lmk_seq', 'face_vtx_seq')
 
-    if refresh or not os.path.isdir(_util.getRelPicklesPath(dataset_name)):
-      char2idx, frames, captions = FrameCaptionDataset.construct_dataset(dataset_name, vid_ids,
-        labels=labels, start_end=start_end, cap=cap, frame_type=frame_type, in_ext=in_ext, fps=fps, threshold=threshold)
+    pickle_dir = _util.getRelPicklesPath(dataset_name, 'sentence' if sentence_dataset else 'non-sentence', split_name)
+    if refresh or not os.path.isdir(pickle_dir):
+      char2idx, frames, captions = FrameCaptionDataset.construct_dataset(dataset_name, pickle_dir, vid_ids,
+        labels=labels, start_end=start_end, cap=cap, frame_type=frame_type, sentence_dataset=sentence_dataset,
+        in_ext=in_ext, fps=fps, threshold=threshold)
     else:
       char2idx, frames, captions = load_dataset(dataset_name, out_ext=out_ext)
     assert len(frames) == len(captions) > 0
@@ -208,7 +210,7 @@ class FrameCaptionDataset(_data.Dataset):
     return self.num_elements
 
   @staticmethod
-  def construct_dataset(dataset_name, vid_ids,
+  def construct_dataset(dataset_name, pickle_dir, vid_ids,
       labels='labels.json',
       start_end='s_e', cap='cap', frame_type='face_lmk_seq', sentence_dataset=False,
       in_ext='.npy', out_ext='.pkl',
@@ -245,12 +247,12 @@ class FrameCaptionDataset(_data.Dataset):
     char2idx = build_vocab(dataset_name, labels)
 
     # Pickle dataset contents.
-    _util.mkdirP(_util.getRelPicklesPath(dataset_name))
-    with open(_util.getRelPicklesPath(dataset_name, 'char2idx' + out_ext), 'wb') as fout:
+    _util.mkdirP(pickle_dir)
+    with open(os.path.join(pickle_dir, 'char2idx' + out_ext), 'wb') as fout:
       pickle.dump(char2idx, fout)
-    with open(_util.getRelPicklesPath(dataset_name, 'frames' + out_ext), 'wb') as fout:
+    with open(os.path.join(pickle_dir, 'frames' + out_ext), 'wb') as fout:
       pickle.dump(frames, fout)
-    with open(_util.getRelPicklesPath(dataset_name, 'captions' + out_ext), 'wb') as fout:
+    with open(os.path.join(pickle_dir, 'captions' + out_ext), 'wb') as fout:
       pickle.dump(captions, fout)
     return char2idx, frames, captions
 

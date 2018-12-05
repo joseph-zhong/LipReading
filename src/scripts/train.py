@@ -39,12 +39,13 @@ def _get_datasets(dataset_name, train_split, sentence_dataset,
   # REVIEW josephz: If we can load from pickles, we should not even do this split. We could have a helper factory thingy?
   # Load dataset video IDs and shuffle predictably.
   train_ids, val_ids, test_ids = _data_loader.split_dataset(dataset_name, train_split=train_split, rand=rand)
-  train_dataset = _data_loader.FrameCaptionSentenceDataset(os.path.join(dataset_name, 'train'), train_ids, labels,
-    threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
-  val_dataset = _data_loader.FrameCaptionSentenceDataset(os.path.join(dataset_name, 'val'), val_ids, labels,
-    threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
-  test_dataset = _data_loader.FrameCaptionSentenceDataset(os.path.join(dataset_name, 'test'), test_ids, labels,
-    threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
+
+  train_dataset = _data_loader.FrameCaptionDataset(dataset_name, 'train', train_ids,
+    labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
+  val_dataset = _data_loader.FrameCaptionDataset(dataset_name, 'val', val_ids,
+    labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
+  test_dataset = _data_loader.FrameCaptionDataset(dataset_name, 'test', test_ids,
+    labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
 
   print()
   print("Dataset Information:")
