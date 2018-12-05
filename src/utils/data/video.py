@@ -67,7 +67,7 @@ class VideoReader:
     # REVIEW josephz: Can this be improved with a buffer?
     assert self.lo <= lo <= hi
     self.lo = lo
-    return [self._reader.get_data(x) for x in range(lo, max(hi, self.getNumFrames()))]
+    return [self._reader.get_data(x) for x in range(lo, min(hi, self.getNumFrames()))]
     # for x in range(lo, hi):
     #   yield self._reader.get_data(x)
 
