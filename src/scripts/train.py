@@ -174,7 +174,7 @@ def train(
     val_cers.append(val_cer)
     test_cers.append(test_cer)
     train_decoder_losses.append(avg_decoder_loss)
-    avg_ctc_loss.append(avg_ctc_loss)
+    train_ctc_losses.append(avg_ctc_loss)
   te = time.time()
   total_time = te - ts
   print()
