@@ -25,7 +25,6 @@ import src.train.train_better_model as _train
 import src.models.lipreader.better_model as _better_model
 
 _logger = None
-_labels = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", ">", "?", "@", "[", "]", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
 
 def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
   global _logger
@@ -33,51 +32,26 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
    _logger = _util.getLogger(os.path.basename(__file__).split('.')[0], verbosity=verbosity)
   return _logger
 
-def _get_datasets(dataset, train_split, sentence_dataset,
-    threshold=0.8, labels='labels.json', rand=None):
-  # Load vocabulary.
-  raw_dir = _util.getRelRawPath(dataset)
-  labels_path = os.path.join(raw_dir, labels)
-  try:
-    with open(labels_path) as label_file:
-      labels = str(''.join(json.load(label_file)))
-  except:
-    labels = _labels
-    _getSharedLogger().warning("Could not open '%s'... \n\tUsing hardcoded labels: '%s'", labels_path, labels)
+def _get_datasets(dataset_name, train_split, sentence_dataset,
+    threshold=0.8,
+    labels='labels.json', rand=None, refresh=False):
 
+  # REVIEW josephz: If we can load from pickles, we should not even do this split. We could have a helper factory thingy?
   # Load dataset video IDs and shuffle predictably.
-  dataset_dir = _util.getRelDatasetsPath(dataset)
-  videos = glob.glob(os.path.join(dataset_dir, '*'))
-  assert len(videos) > 0, f"No video ids found: '{dataset_dir}'"
-  videos.sort()
-  if rand is not None:
-    rand.shuffle(videos)
-  else:
-    np.random.shuffle(videos)
-
-  # Split dataset into train, val, and testing.
-  train_size = int(train_split * len(videos))
-  val_test_size = len(videos) - train_size
-  assert int(train_size + val_test_size) == len(videos)
-  val_size = train_size + val_test_size // 2
-  if sentence_dataset:
-    # REVIEW josephz: The constructor could instead take the flag?
-    train_dataset = _data_loader.FrameCaptionSentenceDataset(videos[:train_size], labels, threshold=threshold)
-    val_dataset = _data_loader.FrameCaptionSentenceDataset(videos[train_size:val_size], labels, threshold=threshold)
-    test_dataset = _data_loader.FrameCaptionSentenceDataset(videos[val_size:], labels, threshold=threshold)
-  else:
-    train_dataset = _data_loader.FrameCaptionDataset(videos[:train_size], labels, threshold=threshold)
-    val_dataset = _data_loader.FrameCaptionDataset(videos[train_size:val_size], labels, threshold=threshold)
-    test_dataset = _data_loader.FrameCaptionDataset(videos[val_size:], labels, threshold=threshold)
+  train_ids, val_ids, test_ids = _data_loader.split_dataset(dataset_name, train_split=train_split, rand=rand)
+  train_dataset = _data_loader.FrameCaptionSentenceDataset(os.path.join(dataset_name, 'train'), train_ids, labels,
+    threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
+  val_dataset = _data_loader.FrameCaptionSentenceDataset(os.path.join(dataset_name, 'val'), val_ids, labels,
+    threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
+  test_dataset = _data_loader.FrameCaptionSentenceDataset(os.path.join(dataset_name, 'test'), test_ids, labels,
+    threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
 
   print()
   print("Dataset Information:")
-  print("\tTrain Dataset:", len(train_dataset))
-  print("\tVal Dataset:", len(val_dataset))
-  print("\tTest Dataset:", len(test_dataset))
+  print("\tTrain Dataset Size:", len(train_dataset))
+  print("\tVal Dataset Size:", len(val_dataset))
+  print("\tTest Dataset Size:", len(test_dataset))
   print()
-
-
   return train_dataset, val_dataset, test_dataset
 
 def _init_models(
@@ -104,10 +78,11 @@ def _init_models(
 def train(
     data="StephenColbert/medium_no_vtx1",
     labels="labels.json",
-    sentence_dataset=False,
+    sentence_dataset=True,
     occlussion_threshold=0.8,
     train_split=0.8,
     num_workers=1,
+    refresh=False,
 
     num_epochs=50,
     batch_size=4,
@@ -164,7 +139,8 @@ def train(
   device = torch.device('cuda') if cuda else torch.device('cpu')
 
   # Init Data.
-  train_dataset, val_dataset, test_dataset = _get_datasets(data, train_split, sentence_dataset, threshold=occlussion_threshold, labels=labels, rand=rand)
+  train_dataset, val_dataset, test_dataset = _get_datasets(data, train_split, sentence_dataset,
+    threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh)
   train_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
   val_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
   test_loader = _data.DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)

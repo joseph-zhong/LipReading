@@ -55,6 +55,9 @@ def getRelWeightsPath(*relPath):
 def getRelDatasetsPath(*relPath):
   return getRelDataPath("datasets", *relPath)
 
+def getRelPicklesPath(*relPath):
+  return getRelDataPath("pickles", *relPath)
+
 def mkdirP(path):
   if not os.path.exists(path):
     os.makedirs(path)
