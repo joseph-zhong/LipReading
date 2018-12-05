@@ -34,7 +34,7 @@ def _getSharedLogger(verbosity=_util.DEFAULT_VERBOSITY):
 
 def _get_datasets(dataset_name, train_split, sentence_dataset,
     threshold=0.8,
-    labels='labels.json', rand=None, refresh=False):
+    labels='labels.json', rand=None, refresh=False, include_test=True):
 
   # REVIEW josephz: If we can load from pickles, we should not even do this split. We could have a helper factory thingy?
   # Load dataset video IDs and shuffle predictably.
@@ -44,16 +44,18 @@ def _get_datasets(dataset_name, train_split, sentence_dataset,
     labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
   val_dataset = _data_loader.FrameCaptionDataset(dataset_name, 'val', val_ids,
     labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
-  test_dataset = _data_loader.FrameCaptionDataset(dataset_name, 'test', test_ids,
-    labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
+  if include_test:
+    test_dataset = _data_loader.FrameCaptionDataset(dataset_name, 'test', test_ids,
+      labels=labels, threshold=threshold, sentence_dataset=sentence_dataset, refresh=refresh)
 
   print()
   print("Dataset Information:")
   print("\tTrain Dataset Size:", len(train_dataset))
   print("\tVal Dataset Size:", len(val_dataset))
-  print("\tTest Dataset Size:", len(test_dataset))
+  if include_test:
+    print("\tTest Dataset Size:", len(test_dataset))
   print()
-  return train_dataset, val_dataset, test_dataset
+  return (train_dataset, val_dataset, test_dataset) if include_test else (train_dataset, val_dataset)
 
 def _init_models(
     char2idx,
@@ -140,11 +142,10 @@ def train(
   device = torch.device('cuda') if cuda else torch.device('cpu')
 
   # Init Data.
-  train_dataset, val_dataset, test_dataset = _get_datasets(data, train_split, sentence_dataset,
-    threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh)
+  train_dataset, val_dataset = _get_datasets(data, train_split, sentence_dataset,
+    threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh, include_test=False)
   train_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
   val_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
-  test_loader = _data.DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
 
   # Init Models.
   encoder, decoding_step = _init_models(train_dataset.char2idx, num_layers, frame_dim, hidden_size, char_dim,
@@ -152,15 +153,19 @@ def train(
 
   # Train.
   val_cers = []
-  test_cers = []
   train_decoder_losses = []
   train_ctc_losses = []
 
+  # Initial evaluation
+  decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
+  val_cer = (count - correct).float() / count
+
+  val_cers.append(val_cer)
+  train_decoder_losses.append(avg_decoder_loss)
+  train_ctc_losses.append(avg_ctc_loss)
+
   ts = time.time()
   for i in range(num_epochs):
-    decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
-    val_cer = (count - correct).float() / count
-
     avg_decoder_loss, avg_ctc_loss = _train.train(encoder, decoding_step, train_loader,
       opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
       device=device,
@@ -168,11 +173,10 @@ def train(
       teacher_forcing_ratio=teacher_forcing_ratio,
       grad_norm=grad_norm)
 
-    decoder_loss, correct, count = _train.eval(encoder, decoding_step, test_loader, device, train_dataset.char2idx)
-    test_cer = (count - correct).float() / count
+    decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
+    val_cer = (count - correct).float() / count
 
     val_cers.append(val_cer)
-    test_cers.append(test_cer)
     train_decoder_losses.append(avg_decoder_loss)
     train_ctc_losses.append(avg_ctc_loss)
   te = time.time()
@@ -181,7 +185,6 @@ def train(
   print("Training complete: Took '{}' seconds, or '{}' per epoch".format(total_time, total_time / num_epochs))
   print("Training Statistics")
   print("\tBest Val CER: '{}'".format(np.min(val_cers)))
-  print("\tBest Test CER: '{}'".format(np.min(test_cers)))
   print("\tBest Decoder Loss: '{}'".format(np.min(train_decoder_losses)))
   print("\tBest CTC Loss: '{}'".format(np.min(train_ctc_losses)))
   print()
