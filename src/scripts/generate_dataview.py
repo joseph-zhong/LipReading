@@ -156,6 +156,7 @@ def generate_dataview(
     timedelay=0,
     gen_vtx=False,
     force=False,
+    seed=123456,
 ):
   """ Generates dataviews for the given input file or directory.
 
@@ -167,6 +168,10 @@ def generate_dataview(
     TODO: Proper implementation and analysis, TO BE DECIDED.
   :param force: Flag to overwrite existing files.
   """
+
+  # Set seed.
+  rand = np.random.RandomState(seed=seed)
+
   # Standardize directories.
   inp_dir = _util.getRelRawPath(inp)
   outp_dir = _util.getRelDatasetsPath(inp)
@@ -177,6 +182,12 @@ def generate_dataview(
   vid_paths = sorted(glob.glob(vid_glob))
   cap_paths = sorted(glob.glob(cap_glob))
   assert len(vid_paths) == len(cap_paths) > 0
+
+  # Consistently shuffle video path processing order.
+  indices = np.arange(len(vid_paths), dtype=np.int)
+  rand.shuffle(indices)
+  vid_paths = np.array(vid_paths)[indices]
+  cap_paths = np.array(cap_paths)[indices]
 
   ts = time.time()
   _getSharedLogger().info(
