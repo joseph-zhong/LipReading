@@ -57,7 +57,7 @@ def _get_datasets(dataset, train_split, sentence_dataset,
 
   # Split dataset into train, val, and testing.
   train_size = int(train_split * len(videos))
-  val_test_size = round(len(videos) * (1.0 - train_split))
+  val_test_size = len(videos) - train_size
   assert int(train_size + val_test_size) == len(videos)
   val_size = train_size + val_test_size // 2
   if sentence_dataset:
