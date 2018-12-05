@@ -87,7 +87,7 @@ def train(
     num_workers=1,
     refresh=False,
 
-    num_epochs=50,
+    patience=10,
     batch_size=4,
     learning_rate=1e-2,
     enable_ctc=False,
@@ -115,7 +115,7 @@ def train(
   :param occlussion_threshold:
   :param train_split:
   :param num_workers:
-  :param num_epochs:
+  :param patience:
   :param batch_size:
   :param learning_rate:
   :param enable_ctc:
@@ -156,6 +156,9 @@ def train(
   train_decoder_losses = []
   train_ctc_losses = []
 
+  best_val_cer = 1.0
+  best_val_cer_idx = -1
+
   # Initial evaluation
   decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
   val_cer = (count - correct).float() / count
@@ -164,8 +167,10 @@ def train(
   train_decoder_losses.append(avg_decoder_loss)
   train_ctc_losses.append(avg_ctc_loss)
 
+  num_epochs = 0
+
   ts = time.time()
-  for i in range(num_epochs):
+  while True:
     avg_decoder_loss, avg_ctc_loss = _train.train(encoder, decoding_step, train_loader,
       opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
       device=device,
@@ -179,6 +184,16 @@ def train(
     val_cers.append(val_cer)
     train_decoder_losses.append(avg_decoder_loss)
     train_ctc_losses.append(avg_ctc_loss)
+
+    if val_cer < best_val_cer:
+      best_val_cer = val_cer
+      best_val_cer_idx = num_epochs
+    else:
+      if num_epochs - best_val_cer_idx >= patience:
+        break
+
+    num_epochs += 1
+
   te = time.time()
   total_time = te - ts
   print()
