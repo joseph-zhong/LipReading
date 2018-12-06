@@ -69,12 +69,13 @@ def _init_models(
     attention_type,
     bidirectional,
     rnn_dropout,
+    device
 ):
   encoder = _better_model.VideoEncoder(frame_dim, hidden_size,
     rnn_type=rnn_type, num_layers=num_layers, bidirectional=bidirectional, rnn_dropout=rnn_dropout,
-    enable_ctc=enable_ctc, vocab_size=len(char2idx), char2idx=char2idx)
+    enable_ctc=enable_ctc, vocab_size=len(char2idx), char2idx=char2idx, device=device).to(device)
   decoding_step = _better_model.CharDecodingStep(encoder,
-    char_dim=char_dim, vocab_size=len(char2idx), char2idx=char2idx, rnn_dropout=rnn_dropout, attention_type=attention_type)
+    char_dim=char_dim, vocab_size=len(char2idx), char2idx=char2idx, rnn_dropout=rnn_dropout, attention_type=attention_type, device=device).to(device)
 
   return encoder, decoding_step
 
@@ -140,16 +141,19 @@ def train(
   # Setup device.
   # REVIEW josephz: Is there a clean way to use multiple or different GPUs?
   device = torch.device('cuda') if cuda else torch.device('cpu')
+  print("Device: ", device)
 
   # Init Data.
+  print("Initializing dataset '{}'".format(data))
   train_dataset, val_dataset = _get_datasets(data, train_split, sentence_dataset,
     threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh, include_test=False)
   train_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
   val_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
 
   # Init Models.
+  print("Initializing model")
   encoder, decoding_step = _init_models(train_dataset.char2idx, num_layers, frame_dim, hidden_size, char_dim,
-    enable_ctc, rnn_type, attention_type, bidirectional, rnn_dropout)
+    enable_ctc, rnn_type, attention_type, bidirectional, rnn_dropout, device)
 
   # Train.
   val_cers = []
@@ -160,14 +164,18 @@ def train(
   best_val_cer_idx = -1
 
   # Initial evaluation
+  print("Initial evaluation: ", end="", flush=True)
   decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
   val_cer = (count - correct).float() / count
-  print("Initial CER: ", str(val_cer))
+  print("CER: ", str(val_cer))
 
   num_epochs = 0
 
+  print("Beginning training loop")
   ts = time.time()
-  while True:
+  while val_cer < best_val_cer or num_epochs - best_val_cer_idx < patience:
+    print("Epoch {}:".format(num_epochs + 1))
+
     avg_decoder_loss, avg_ctc_loss = _train.train(encoder, decoding_step, train_loader,
       opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
       device=device,
@@ -185,9 +193,6 @@ def train(
     if val_cer < best_val_cer:
       best_val_cer = val_cer
       best_val_cer_idx = num_epochs
-    else:
-      if num_epochs - best_val_cer_idx >= patience:
-        break
 
     num_epochs += 1
 

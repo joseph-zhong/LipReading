@@ -31,6 +31,7 @@ def train(encoder, decoding_step, data_loader, opt, device,
   avg_decoder_loss = 0
   avg_ctc_loss = 0
   for frames, frame_lens, chars, char_lens in data_loader:
+    frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
     assert (chars[:,0].squeeze() == char2idx[BOS]).all()
     assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
     if use_ctc:
@@ -83,11 +84,11 @@ def train(encoder, decoding_step, data_loader, opt, device,
 
     decoder_loss /= (labels != char2idx[PAD]).sum()
     avg_decoder_loss += decoder_loss
-    print(f'\tTraining decoder_loss: {decoder_loss}')
+    print('\tTraining decoder_loss: {}'.format(decoder_loss))
     decoder_loss.backward(retain_graph=use_ctc)
 
     if use_ctc:
-      print(f'\tTraining ctc_loss: {ctc_loss}')
+      print('\tTraining ctc_loss: {}'.format(ctc_loss))
       ctc_loss.backward()
       avg_ctc_loss += ctc_loss
 
@@ -114,18 +115,16 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
   count = 0
   with torch.no_grad():
     for frames, frame_lens, chars, char_lens in data_loader:
+      frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
       assert (chars[:,0].squeeze() == char2idx[BOS]).all()
       assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
 
-      labels = chars[:,1:]
+      labels = chars[:,1:].to(device)
       label_lens = char_lens - 1
       assert (labels != char2idx[PAD]).sum() == label_lens.sum()
 
       batch_size = frames.shape[0]
       max_label_len = label_lens.max()
-
-      frames, frame_lens = frames.to(device), frame_lens.to(device)
-      chars, char_lens = chars.to(device), char_lens.to(device)
 
       if use_ctc:
         encoder_outputs, encoder_hidden_states, prev_state = encoder(frames, frame_lens)
@@ -155,16 +154,16 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
         decoder_loss += F.nll_loss(output_log_probs, labels[:,i], ignore_index=char2idx[PAD], reduction='sum')
         prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)  # (batch_size, )
 
-        mask = labels[:,i] != char2idx[PAD]
-        correct += ((prev_output == labels[:,i]) * mask).sum()
+        mask = labels[:, i] != char2idx[PAD]
+        correct += ((prev_output == labels[:, i]) * mask).sum()
 
-      count += (labels != char2idx[PAD]).sum()
+      count += (labels != char2idx[PAD]).sum().float()
 
   decoder_loss /= count
-  print(f'\ttest decoder_loss: {decoder_loss}')
+  print('\ttest decoder_loss: {}'.format(decoder_loss))
 
   if use_ctc:
     ctc_loss /= len(data_loader)
-    print(f'\ttest ctc_loss: {ctc_loss}')
-  print(f'\tCER: {(count - correct).float() / count}')
+    print('\ttest ctc_loss: {}'.format(ctc_loss))
+  print('\tCER: {}'.format((count - correct).float() / count))
   return decoder_loss, correct, count

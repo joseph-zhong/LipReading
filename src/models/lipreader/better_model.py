@@ -11,7 +11,7 @@ _ALLOWED_ATTENTION_TYPES = {'none', 'dot', 'general', '1_layer_nn', 'concat'}
 class VideoEncoder(nn.Module):
     def __init__(self, frame_dim, hidden_size, frame_processing='flatten',
                  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0,
-                 enable_ctc=False, vocab_size=-1, char2idx=None):
+                 enable_ctc=False, vocab_size=-1, char2idx=None, device="cpu"):
         """
         When enable_ctc=True, vocab_size and char2idx must be provided
         vocab_size includes all the special tokens
@@ -36,7 +36,7 @@ class VideoEncoder(nn.Module):
             self.char2idx = char2idx
             self.num_dirs = 2 if self.bidirectional else 1
 
-            self.output_mask = torch.ones(self.adj_vocab_size)
+            self.output_mask = torch.ones(self.adj_vocab_size, device=device)
             self.output_mask[self.char2idx[PAD]] = 0
             self.output_mask[self.char2idx[BOS]] = 0
 
@@ -108,7 +108,7 @@ class VideoEncoder(nn.Module):
         return final_state
 
 class CharDecodingStep(nn.Module):
-    def __init__(self, encoder: VideoEncoder, char_dim, vocab_size, char2idx, rnn_dropout=0, attention_type='none', attn_hidden_size=-1):
+    def __init__(self, encoder: VideoEncoder, char_dim, vocab_size, char2idx, rnn_dropout=0, attention_type='none', attn_hidden_size=-1, device="cpu"):
         """
         vocab_size includes all the special tokens
         """
@@ -126,7 +126,7 @@ class CharDecodingStep(nn.Module):
         self.char2idx = char2idx
         self.attention_type = attention_type
 
-        self.output_mask = torch.ones(self.vocab_size)
+        self.output_mask = torch.ones(self.vocab_size, device=device)
         self.output_mask[self.char2idx[PAD]] = 0
         self.output_mask[self.char2idx[BOS]] = 0
         self.embedding = nn.Embedding(self.vocab_size, self.char_dim, padding_idx=self.char2idx[PAD])
@@ -157,10 +157,7 @@ class CharDecodingStep(nn.Module):
         en_seq_len = encoder_hidden_states.shape[1]
 
         # (batch_size, en_seq_len)
-        encoder_mask = torch.arange(en_seq_len).expand(batch_size, en_seq_len) < encoder_lens.unsqueeze(dim=1)
-        if input_.is_cuda:
-            encoder_mask = encoder_mask.cuda()
-            self.output_mask = self.output_mask.cuda()
+        encoder_mask = torch.arange(en_seq_len, device=input_.device).expand(batch_size, en_seq_len) < encoder_lens.unsqueeze(dim=1)
         # (batch_size, char_dim)
         embedded_char = self.embedding(input_)
         # (batch_size, seq_len=1, char_dim)
