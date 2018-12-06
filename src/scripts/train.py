@@ -67,6 +67,7 @@ def _init_models(
 
     rnn_type,
     attention_type,
+    attn_hidden_size,
     bidirectional,
     rnn_dropout,
     device
@@ -75,7 +76,8 @@ def _init_models(
     rnn_type=rnn_type, num_layers=num_layers, bidirectional=bidirectional, rnn_dropout=rnn_dropout,
     enable_ctc=enable_ctc, vocab_size=len(char2idx), char2idx=char2idx, device=device).to(device)
   decoding_step = _better_model.CharDecodingStep(encoder,
-    char_dim=char_dim, vocab_size=len(char2idx), char2idx=char2idx, rnn_dropout=rnn_dropout, attention_type=attention_type, device=device).to(device)
+    char_dim=char_dim, vocab_size=len(char2idx), char2idx=char2idx, rnn_dropout=rnn_dropout, attention_type=attention_type,
+    attn_hidden_size=attn_hidden_size, device=device).to(device)
 
   return encoder, decoding_step
 
@@ -102,6 +104,7 @@ def train(
 
     rnn_type='LSTM',
     attention_type='1_layer_nn',
+    attn_hidden_size=-1,
     bidirectional=False,
     rnn_dropout=0.0,
 
@@ -128,6 +131,7 @@ def train(
   :param char_dim:
   :param rnn_type:
   :param attention_type:
+  :param attn_hidden_size:
   :param bidirectional:
   :param rnn_dropout:
   :param seed:
@@ -153,7 +157,7 @@ def train(
   # Init Models.
   print("Initializing model")
   encoder, decoding_step = _init_models(train_dataset.char2idx, num_layers, frame_dim, hidden_size, char_dim,
-    enable_ctc, rnn_type, attention_type, bidirectional, rnn_dropout, device)
+    enable_ctc, rnn_type, attention_type, attn_hidden_size, bidirectional, rnn_dropout, device)
 
   # Train.
   val_cers = []

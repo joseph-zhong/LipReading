@@ -63,7 +63,7 @@ encoder = _better_model.VideoEncoder(frame_dim, hidden_size,
 decoding_step = _better_model.CharDecodingStep(encoder,
   char_dim=char_dim, vocab_size=len(train_dataset.char2idx),
   char2idx=train_dataset.char2idx,
-  rnn_dropout=0, attention_type='1_layer_nn', device=device).to(device)
+  rnn_dropout=0, attention_type='1_layer_nn', attn_hidden_size=-1, device=device).to(device)
 
 # Train.
 learning_rate = 3e-4
