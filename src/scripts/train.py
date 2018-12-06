@@ -162,7 +162,7 @@ def train(
   # Initial evaluation
   decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
   val_cer = (count - correct).float() / count
-  print("InitialCER: ", str(val_cer))
+  print("Initial CER: ", str(val_cer))
 
   num_epochs = 0
 
