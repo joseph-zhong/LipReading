@@ -56,6 +56,7 @@ def train(encoder, decoding_step, data_loader, opt, device,
       if torch.isinf(curr_ctc_loss):
         print('inf CTC loss occurred in train()...')
         skipped_indices, working_indices = ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, encoder.adj_vocab_size - 1)
+        working_indices = working_indices.to(device)
         if len(working_indices) == 0:
           print('skipping the entire batch')
           continue
@@ -123,6 +124,7 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
         if torch.isinf(curr_ctc_loss):
           print('inf CTC loss occurred in eval()...')
           skipped_indices, working_indices = ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, encoder.adj_vocab_size - 1)
+          working_indices = working_indices.to(device)
           if len(working_indices) == 0:
             print('skipping the entire batch')
             continue
