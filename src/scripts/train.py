@@ -82,7 +82,7 @@ def _init_models(
 def train(
     data="StephenColbert/medium_no_vtx1",
     labels="labels.json",
-    sentence_dataset=True,
+    sentence_dataset=False,
     occlussion_threshold=0.8,
     train_split=0.8,
     num_workers=1,
