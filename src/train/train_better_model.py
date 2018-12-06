@@ -15,27 +15,25 @@ def ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, blank):
   return skipped_indices, torch.LongTensor(working_indices)
 
 def train(encoder, decoding_step, data_loader, opt, device,
-      char2idx, teacher_forcing_ratio=1, grad_norm=None):
+          char2idx, teacher_forcing_ratio=1, grad_norm=None):
   """
   Assumes that the sequences given all begin with BOS and end with EOS
   data_loader yields:
-    frames: FloatTensor
-    frame_lens: LongTensor
-    chars: LongTensor
-    char_lens: LongTensor
+      frames: FloatTensor
+      frame_lens: LongTensor
+      chars: LongTensor
+      char_lens: LongTensor
   """
   use_ctc = encoder.enable_ctc
 
   encoder.train()
   decoding_step.train()
-  avg_decoder_loss = 0
-  avg_ctc_loss = 0
   for frames, frame_lens, chars, char_lens in data_loader:
     frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
     assert (chars[:,0].squeeze() == char2idx[BOS]).all()
     assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
     if use_ctc:
-      assert (frame_lens >= char_lens).all(), "Input length must be greater or equal to output length, otherwise ctc loss will produce inf"
+      assert (frame_lens >= char_lens).all()  # otherwise ctc loss will produce inf
 
     labels = chars[:,1:]
     label_lens = char_lens - 1
@@ -63,14 +61,13 @@ def train(encoder, decoding_step, data_loader, opt, device,
           continue
         print('skipping indices in batch: ' + str(skipped_indices))
         curr_ctc_loss = F.ctc_loss(encoder_outputs.index_select(0, working_indices).transpose(0, 1),
-                                    labels.index_select(0, working_indices),
-                                    frame_lens.index_select(0, working_indices),
-                                    label_lens.index_select(0, working_indices),
-                                    blank=encoder.adj_vocab_size - 1, reduction='mean')
+            labels.index_select(0, working_indices),
+            frame_lens.index_select(0, working_indices),
+            label_lens.index_select(0, working_indices),
+            blank=encoder.adj_vocab_size - 1, reduction='mean')
       ctc_loss += curr_ctc_loss
     else:
       encoder_hidden_states, prev_state = encoder(frames, frame_lens)
-
     prev_output = torch.LongTensor([char2idx[BOS]] * batch_size).to(device)
 
     for i in range(max_label_len):
@@ -78,29 +75,22 @@ def train(encoder, decoding_step, data_loader, opt, device,
       input_ = chars[:,i] if teacher_forcing else prev_output
 
       output_log_probs, prev_state = decoding_step(input_, prev_state,
-                             frame_lens, encoder_hidden_states)
+                                                   frame_lens, encoder_hidden_states)
       decoder_loss += F.nll_loss(output_log_probs, labels[:,i], ignore_index=char2idx[PAD], reduction='sum')
       prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)
 
     decoder_loss /= (labels != char2idx[PAD]).sum()
-    avg_decoder_loss += decoder_loss
-    print('\tTraining decoder_loss: {}'.format(decoder_loss))
+    print(f'\tTraining decoder_loss: {decoder_loss}')
     decoder_loss.backward(retain_graph=use_ctc)
 
     if use_ctc:
-      print('\tTraining ctc_loss: {}'.format(ctc_loss))
+      print(f'\tTraining ctc_loss: {ctc_loss}')
       ctc_loss.backward()
-      avg_ctc_loss += ctc_loss
 
     if grad_norm is not None:
       torch.nn.utils.clip_grad_norm_(encoder.parameters(), grad_norm)
       torch.nn.utils.clip_grad_norm_(decoding_step.parameters(), grad_norm)
     opt.step()
-
-    avg_decoder_loss /= len(data_loader)
-    if use_ctc:
-      avg_ctc_loss /= len(data_loader)
-    return avg_decoder_loss, avg_ctc_loss
 
 def eval(encoder, decoding_step, data_loader, device, char2idx):
   use_ctc = encoder.enable_ctc
@@ -138,19 +128,20 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
             continue
           print('skipping indices in batch: ' + str(skipped_indices))
           curr_ctc_loss = F.ctc_loss(encoder_outputs.index_select(0, working_indices).transpose(0, 1),
-                                     labels.index_select(0, working_indices),
-                                     frame_lens.index_select(0, working_indices),
-                                     label_lens.index_select(0, working_indices),
-                                     blank=encoder.adj_vocab_size - 1, reduction='sum')
+                                   labels.index_select(0, working_indices),
+                                   frame_lens.index_select(0, working_indices),
+                                   label_lens.index_select(0, working_indices),
+                                   blank=encoder.adj_vocab_size - 1, reduction='sum')
         ctc_loss += curr_ctc_loss
       else:
         encoder_hidden_states, prev_state = encoder(frames, frame_lens)
 
+      prev_output = torch.LongTensor([char2idx[BOS]] * batch_size).to(device)
       for i in range(max_label_len):
         input_ = chars[:,i]
 
         output_log_probs, prev_state = decoding_step(input_, prev_state,
-                               frame_lens, encoder_hidden_states)
+                                                     frame_lens, encoder_hidden_states)
         decoder_loss += F.nll_loss(output_log_probs, labels[:,i], ignore_index=char2idx[PAD], reduction='sum')
         prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)  # (batch_size, )
 
@@ -160,10 +151,10 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
       count += (labels != char2idx[PAD]).sum().float()
 
   decoder_loss /= count
-  print('\ttest decoder_loss: {}'.format(decoder_loss))
+  print(f'\ttest decoder_loss: {decoder_loss}')
 
   if use_ctc:
     ctc_loss /= len(data_loader)
-    print('\ttest ctc_loss: {}'.format(ctc_loss))
-  print('\tCER: {}'.format((count - correct).float() / count))
+    print(f'\ttest ctc_loss: {ctc_loss}')
+  print(f'CER: {(count - correct).float() / count}')
   return decoder_loss, correct, count

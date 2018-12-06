@@ -34,10 +34,7 @@ with open(labels_path, 'r') as fin:
   labels = json.load(fin)
 
 ## Init dataset and dataset loader.
-if sentence_dataset:
-  train_dataset = _data_loader.FrameCaptionSentenceDataset(vid_id_dirs, labels)
-else:
-  train_dataset = _data_loader.FrameCaptionDataset(vid_id_dirs, labels)
+train_dataset = _data_loader.FrameCaptionDataset(dataset, 'train', vid_id_dirs, labels='labels.json', sentence_dataset=sentence_dataset)
 
 train_data_loader = _data.DataLoader(train_dataset, batch_size=batch, num_workers=num_workers,
   collate_fn=_data_loader._collate_fn)
@@ -59,10 +56,7 @@ with open(labels_path, 'r') as fin:
   labels = json.load(fin)
 
 ## Init dataset and dataset loader.
-if sentence_dataset:
-  test_dataset = _data_loader.FrameCaptionSentenceDataset(vid_id_dirs, labels)
-else:
-  test_dataset = _data_loader.FrameCaptionDataset(vid_id_dirs, labels)
+test_dataset = _data_loader.FrameCaptionDataset(test_dataset, 'test', vid_id_dirs, labels='labels.json', sentence_dataset=sentence_dataset)
 
 test_data_loader = _data.DataLoader(test_dataset, batch_size=batch, num_workers=num_workers,
   collate_fn=_data_loader._collate_fn)
@@ -70,30 +64,32 @@ print("test_dataset len:", len(test_dataset))
 assert train_dataset.char2idx == test_dataset.char2idx
 
 # Init Models.
+cuda = False
+device = torch.device('cuda') if cuda else torch.device('cpu')
 frame_dim = 68 * 3
 hidden_size = 700
 char_dim = 300
 encoder = _better_model.VideoEncoder(frame_dim, hidden_size,
   rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0,
-  enable_ctc=True, vocab_size=len(train_dataset.char2idx), char2idx=train_dataset.char2idx)
+  enable_ctc=True, vocab_size=len(train_dataset.char2idx), char2idx=train_dataset.char2idx, device=device).to(device)
 decoding_step = _better_model.CharDecodingStep(encoder,
   char_dim=char_dim, vocab_size=len(train_dataset.char2idx),
   char2idx=train_dataset.char2idx,
-  rnn_dropout=0, attention_type='1_layer_nn')
+  rnn_dropout=0, attention_type='1_layer_nn', device=device).to(device)
 
 # Train.
 learning_rate = 3e-4
 # opt = torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate)
 
-_train.eval(encoder, decoding_step, test_data_loader, torch.device('cpu'), train_dataset.char2idx)
+_train.eval(encoder, decoding_step, test_data_loader, device, train_dataset.char2idx)
 
 for i in range(50):
   print(f'epoch {i}')
   _train.train(encoder, decoding_step, train_data_loader,
     # opt=opt,
     opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
-    device=torch.device('cpu'), # device=torch.device('cuda'),
+    device=device,
     char2idx=train_dataset.char2idx,
     teacher_forcing_ratio=1,
     grad_norm=50)
-  _train.eval(encoder, decoding_step, test_data_loader, torch.device('cpu'), train_dataset.char2idx)
+  _train.eval(encoder, decoding_step, test_data_loader, device, train_dataset.char2idx)
