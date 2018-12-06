@@ -18,7 +18,7 @@ torch.cuda.manual_seed_all(123456)
 # Init Data.
 batch=4
 num_workers=1
-dataset="StephenColbert/micro_no_vtx"
+dataset="StephenColbert/118"
 sentence_dataset=False
 threshold=0.8
 weights_dir = _util.getRelWeightsPath(dataset)
@@ -26,12 +26,6 @@ dataset_dir = _util.getRelDatasetsPath(dataset)
 raw_dir = _util.getRelRawPath(dataset)
 vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*'))
 vid_id_dirs.sort()
-
-## Load alphabet.
-labels_path = os.path.join(raw_dir, 'labels.json')
-print("Loading labels_path", labels_path)
-with open(labels_path, 'r') as fin:
-  labels = json.load(fin)
 
 ## Init dataset and dataset loader.
 train_dataset = _data_loader.FrameCaptionDataset(dataset, 'train', vid_id_dirs, labels='labels.json', sentence_dataset=sentence_dataset)
@@ -49,12 +43,6 @@ raw_dir = _util.getRelRawPath(test_dataset)
 vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*'))
 vid_id_dirs.sort()
 
-## Load alphabet.
-labels_path = os.path.join(raw_dir, 'labels.json')
-print("Loading labels_path", labels_path)
-with open(labels_path, 'r') as fin:
-  labels = json.load(fin)
-
 ## Init dataset and dataset loader.
 test_dataset = _data_loader.FrameCaptionDataset(test_dataset, 'test', vid_id_dirs, labels='labels.json', sentence_dataset=sentence_dataset)
 
@@ -64,7 +52,7 @@ print("test_dataset len:", len(test_dataset))
 assert train_dataset.char2idx == test_dataset.char2idx
 
 # Init Models.
-cuda = False
+cuda = True
 device = torch.device('cuda') if cuda else torch.device('cpu')
 frame_dim = 68 * 3
 hidden_size = 700
