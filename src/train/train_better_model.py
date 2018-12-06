@@ -26,6 +26,9 @@ def train(encoder, decoding_step, data_loader, opt, device,
   """
   use_ctc = encoder.enable_ctc
 
+  avg_decoder_loss = 0
+  avg_ctc_loss = 0
+
   encoder.train()
   decoding_step.train()
   for frames, frame_lens, chars, char_lens in data_loader:
@@ -83,15 +86,22 @@ def train(encoder, decoding_step, data_loader, opt, device,
     decoder_loss /= (labels != char2idx[PAD]).sum()
     print(f'\tTraining decoder_loss: {decoder_loss}')
     decoder_loss.backward(retain_graph=use_ctc)
+    avg_decoder_loss += decoder_loss.cpu().detach().numpy()
 
     if use_ctc:
       print(f'\tTraining ctc_loss: {ctc_loss}')
       ctc_loss.backward()
+      avg_ctc_loss += ctc_loss.cpu().detach().numpy()
 
     if grad_norm is not None:
       torch.nn.utils.clip_grad_norm_(encoder.parameters(), grad_norm)
       torch.nn.utils.clip_grad_norm_(decoding_step.parameters(), grad_norm)
     opt.step()
+
+  avg_decoder_loss /= len(data_loader)
+  if use_ctc:
+    avg_ctc_loss /= len(data_loader)
+  return avg_decoder_loss, avg_ctc_loss
 
 def eval(encoder, decoding_step, data_loader, device, char2idx):
   use_ctc = encoder.enable_ctc
