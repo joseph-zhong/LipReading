@@ -59,7 +59,7 @@ def getRelWeightsPath(*relPath, use_existing=True):
   path = path + f'.{weight_count}'
   while os.path.isdir(path):
     weight_count += 1
-    path = path[:-2] + f'.{weight_count}'
+    path = path[:-1 + len(str(weight_count))] + f'.{weight_count}'
   return path
 
 
