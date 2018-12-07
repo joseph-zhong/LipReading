@@ -1,4 +1,4 @@
---data=StephenColbert/micro
+--data=StephenColbert/micro_no_vtx
 --sentence_dataset
 --labels=labels.json
 --occlussion_threshold=0.8
