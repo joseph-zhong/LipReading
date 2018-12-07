@@ -36,9 +36,10 @@ class VideoEncoder(nn.Module):
             self.char2idx = char2idx
             self.num_dirs = 2 if self.bidirectional else 1
 
+            # Due to the stupid restriction of PyTorch CTC + CuDNN, we must reserve idx=0 for blank symbol
             self.output_mask = torch.ones(self.adj_vocab_size, device=device)
-            self.output_mask[self.char2idx[PAD]] = 0
-            self.output_mask[self.char2idx[BOS]] = 0
+            self.output_mask[self.char2idx[PAD] + 1] = 0
+            self.output_mask[self.char2idx[BOS] + 1] = 0
 
         self.rnn = getattr(nn, self.rnn_type)(self.frame_dim, self.hidden_size,
                                               num_layers=self.num_layers, bidirectional=self.bidirectional,
