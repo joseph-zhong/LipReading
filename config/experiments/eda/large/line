@@ -6,8 +6,8 @@
 
 --patience=10
 --batch_size=128
---learning_rate=3e-4
---annealings=2
+--learning_rate=0.1
+--annealings=7
 --teacher_forcing_ratio=1.0
 --grad_norm=50
 

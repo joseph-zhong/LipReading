@@ -1,4 +1,5 @@
---data=StephenColbert/small
+--data=StephenColbert/67
+--sentence_dataset
 --labels=labels.json
 --occlussion_threshold=0.8
 --train_split=0.8
@@ -8,6 +9,7 @@
 --batch_size=128
 --learning_rate=0.1
 --annealings=7
+--enable_ctc
 --teacher_forcing_ratio=1.0
 --grad_norm=50
 
@@ -17,7 +19,7 @@
 --char_dim=256
 
 --rnn_type=LSTM
---attention_type=1_layer_nn
+--attention_type=none
 --bidirectional
 --rnn_dropout=0.3
 
