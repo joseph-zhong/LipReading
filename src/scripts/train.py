@@ -158,7 +158,8 @@ def train(
     enable_ctc, rnn_type, attention_type, attn_hidden_size, bidirectional, rnn_dropout, device)
 
   # Initialize Logging.
-  weights_dir = _util.getRelWeightsPath(data)
+  weights_dir = _util.getRelWeightsPath(data, use_existing=False)
+
   tensorboard_writer = tensorboardX.SummaryWriter(weights_dir)
   _getSharedLogger().info("Writing Tensorboard logs to '%s'", weights_dir)
   print()

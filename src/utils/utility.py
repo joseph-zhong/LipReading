@@ -49,8 +49,19 @@ def getRelDataPath(*relPath):
 def getRelRawPath(*relPath):
   return getRelDataPath("raw", *relPath)
 
-def getRelWeightsPath(*relPath):
-  return getRelDataPath("weights", *relPath)
+def getRelWeightsPath(*relPath, use_existing=True):
+  path = getRelDataPath("weights", *relPath)
+
+  if use_existing or not os.path.exists(path):
+    return path
+
+  weight_count = 1
+  path = path + f'.{weight_count}'
+  while os.path.isdir(path):
+    weight_count += 1
+    path = path[:-1] + f'.{weight_count}'
+  return path
+
 
 def getRelDatasetsPath(*relPath):
   return getRelDataPath("datasets", *relPath)
