@@ -187,8 +187,8 @@ def train(
 
   # Initial evaluation
   print("Initial evaluation...")
-  decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
-  val_cer = (count - correct).float() / count
+  decoder_loss, val_correct, val_count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
+  val_cer = (val_count - val_correct).float() / val_count
   print("\tCER: ", str(val_cer))
 
   num_epochs = 0
@@ -219,10 +219,16 @@ def train(
     tensorboard_writer.add_scalar(os.path.join(data, 'avg decoder loss'), avg_decoder_loss, global_step=num_epochs)
     tensorboard_writer.add_scalar(os.path.join(data, 'avg CTC loss'), avg_ctc_loss, global_step=num_epochs)
 
-    decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
-    val_cer = (count - correct).float() / count
+    decoder_loss, val_correct, val_count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
+    _, train_correct, train_count = _train.eval(encoder, decoding_step, train_loader, device, train_dataset.char2idx)
+
+    val_cer = (val_count - val_correct).float() / val_count
+    train_cer = (train_count - train_correct).float() / train_count
+
+    print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
-    tensorboard_writer.add_scalar(os.path.join(data, 'Val CER'), val_cer, global_step=num_epochs)
+    tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
+
 
     val_cers.append(val_cer)
     train_decoder_losses.append(avg_decoder_loss)
