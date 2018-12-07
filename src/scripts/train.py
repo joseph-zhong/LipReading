@@ -89,6 +89,7 @@ def train(
     patience=10,
     batch_size=4,
     learning_rate=1e-2,
+    annealings=2,
     enable_ctc=False,
     teacher_forcing_ratio=1.0,
     grad_norm=50,
@@ -118,6 +119,7 @@ def train(
   :param patience:
   :param batch_size:
   :param learning_rate:
+  :param annealings: Number of times to anneal learning rate before training is finished.
   :param enable_ctc:
   :param teacher_forcing_ratio:
   :param grad_norm:
@@ -189,11 +191,21 @@ def train(
   print("\tCER: ", str(val_cer))
 
   num_epochs = 0
+  num_annealings = 0
 
   print("Beginning training loop")
   ts = time.time()
-  while val_cer < best_val_cer or num_epochs - best_val_cer_idx < patience:
+  while val_cer < best_val_cer or num_annealings < annealings:
     print("Epoch {}:".format(num_epochs + 1))
+
+    if num_epochs - best_val_cer_idx > patience:
+      num_annealings += 1
+      learning_rate /= 10
+      print(f'\tAnnealing to {learning_rate}')
+
+      # Must set best val CER to here, or else this will also trigger next loop
+      # if val CER does not go down.
+      best_val_cer_idx = num_epochs
 
     avg_decoder_loss, avg_ctc_loss = _train.train(encoder, decoding_step, train_loader,
       opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
