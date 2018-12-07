@@ -228,6 +228,7 @@ def train(
     print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
     tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
+    tensorboard_writer.add_scalar("Learning rate", learning_rate, global_step=num_epochs)
 
 
     val_cers.append(val_cer)
