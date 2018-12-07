@@ -159,6 +159,11 @@ def train(
   weights_dir = _util.getRelWeightsPath(data)
   tensorboard_writer = tensorboardX.SummaryWriter(weights_dir)
   _getSharedLogger().info("Writing Tensorboard logs to '%s'", weights_dir)
+  print()
+  print("Try visualizing by running the following:")
+  print(f"\ttensorboard --logdir='{weights_dir}")
+  print("Then open the following URL in your local browser. "
+        "\n\tIf you're running on a remote machine see `README_TENSORBOARD.md` for help...")
 
   # REVIEW josephz: Multi-input support doesn't seem ready yet: https://github.com/lanpa/tensorboardX/issues/256
   # tensorboard_writer.add_graph(encoder,
@@ -178,10 +183,10 @@ def train(
   best_val_cer_idx = -1
 
   # Initial evaluation
-  print("Initial evaluation: ", end="", flush=True)
+  print("Initial evaluation...")
   decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
   val_cer = (count - correct).float() / count
-  print("CER: ", str(val_cer))
+  print("\tCER: ", str(val_cer))
 
   num_epochs = 0
 
