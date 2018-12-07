@@ -39,7 +39,7 @@ def ctc_loss(encoder_outputs, labels, frame_lens, label_lens, reduction, device)
     assert (frame_lens[1:] - frame_lens[:-1] >= 0).all()  # assert in increasing len
 
     # req (5)
-    labels, frame_lens, label_lens = transform_data(lambda data: torch.tensor(data, dtype=torch.int32),
+    labels, frame_lens, label_lens = transform_data(lambda data: torch.tensor(data, dtype=torch.int32).to(device),
                                                     labels, frame_lens, label_lens)
 
     # req (4)
