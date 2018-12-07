@@ -150,7 +150,7 @@ def train(
   train_dataset, val_dataset = _get_datasets(data, train_split, sentence_dataset,
     threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh, include_test=False)
   train_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
-  val_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
+  val_loader = _data.DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
 
   # Init Models.
   print("Initializing model")
