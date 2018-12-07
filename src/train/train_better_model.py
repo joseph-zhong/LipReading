@@ -84,12 +84,12 @@ def train(encoder, decoding_step, data_loader, opt, device,
       prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)
 
     decoder_loss /= (labels != char2idx[PAD]).sum()
-    print(f'\tTraining decoder_loss: {decoder_loss}')
+    # print(f'\tTraining decoder_loss: {decoder_loss}')
     decoder_loss.backward(retain_graph=use_ctc)
     avg_decoder_loss += decoder_loss.cpu().detach().numpy()
 
     if use_ctc:
-      print(f'\tTraining ctc_loss: {ctc_loss}')
+      # print(f'\tTraining ctc_loss: {ctc_loss}')
       ctc_loss.backward()
       avg_ctc_loss += ctc_loss.cpu().detach().numpy()
 
@@ -99,8 +99,10 @@ def train(encoder, decoding_step, data_loader, opt, device,
     opt.step()
 
   avg_decoder_loss /= len(data_loader)
+  print(f'\tTraining decoder_loss: {avg_decoder_loss}')
   if use_ctc:
     avg_ctc_loss /= len(data_loader)
+    print(f'\tTraining ctc_loss: {avg_ctc_loss}')
   return avg_decoder_loss, avg_ctc_loss
 
 def eval(encoder, decoding_step, data_loader, device, char2idx):
