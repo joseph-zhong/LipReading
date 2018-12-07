@@ -14,6 +14,12 @@ import torch
 import torch.utils.data as _data
 import tensorboardX
 
+os.environ['PYTHONPATH'] += ":/gdrive/My Drive/"
+os.environ['LIP_READING_WS_PATH'] = "/gdrive/My Drive/"
+
+import sys
+sys.path.insert(0, "/gdrive/My Drive/")
+
 import src.data.data_loader as _data_loader
 import src.models.lipreader.better_model as _better_model
 import src.train.train_better_model as _train
