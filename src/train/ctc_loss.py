@@ -76,12 +76,13 @@ def ctc_loss(encoder_outputs, labels, frame_lens, label_lens, reduction, device)
             label_lens) = transform_data(lambda data: data[prev_change_point:change_point],
                                          global_encoder_outputs, global_labels, global_frame_lens, global_label_lens)
 
-        # req 1
-        labels = torch.cat([label[:label_len] for label, label_len in zip(labels, label_lens)])
         # req 3; moves up so that we leave idx=0 to blank
         labels = labels + 1
 
-        loss = F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=0, reduction=reduction)
+        # req 1
+        concat_labels = torch.cat([label[:label_len] for label, label_len in zip(labels, label_lens)])
+
+        loss = F.ctc_loss(encoder_outputs.transpose(0, 1), concat_labels, frame_lens, label_lens, blank=0, reduction=reduction)
 
         if torch.isinf(loss):
             print('inf CTC loss occurred...')
@@ -95,7 +96,8 @@ def ctc_loss(encoder_outputs, labels, frame_lens, label_lens, reduction, device)
                 label_lens) = transform_data(lambda data: data.index_select(0, working_indices),
                                              encoder_outputs, labels, frame_lens, label_lens)
 
-            loss = F.ctc_loss(encoder_outputs.transpose(0, 1), labels, frame_lens, label_lens, blank=0, reduction=reduction)
+            concat_labels = torch.cat([label[:label_len] for label, label_len in zip(labels, label_lens)])
+            loss = F.ctc_loss(encoder_outputs.transpose(0, 1), concat_labels, frame_lens, label_lens, blank=0, reduction=reduction)
             minibatch_size = len(working_indices)
 
         if reduction == 'mean':
