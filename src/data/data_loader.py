@@ -37,7 +37,7 @@ _labels = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-"
 def gen_vid_ids(dataset_name, rand=None):
   # Load videos and captions.
   dataset_dir = _util.getRelDatasetsPath(dataset_name)
-  vid_ids = glob.glob(os.path.join(dataset_dir, '*'))
+  vid_ids = glob.glob(os.path.join(dataset_dir, '*/'))
   assert len(vid_ids) > 0, f"No video ids found: '{dataset_dir}'"
   vid_ids.sort()
   if rand is not None:

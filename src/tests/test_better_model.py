@@ -24,7 +24,7 @@ threshold=0.8
 weights_dir = _util.getRelWeightsPath(dataset)
 dataset_dir = _util.getRelDatasetsPath(dataset)
 raw_dir = _util.getRelRawPath(dataset)
-vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*'))
+vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*/'))
 vid_id_dirs.sort()
 
 ## Init dataset and dataset loader.
@@ -40,7 +40,7 @@ test_dataset="StephenColbert/nano"
 weights_dir = _util.getRelWeightsPath(test_dataset)
 dataset_dir = _util.getRelDatasetsPath(test_dataset)
 raw_dir = _util.getRelRawPath(test_dataset)
-vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*'))
+vid_id_dirs = glob.glob(os.path.join(dataset_dir, '*/'))
 vid_id_dirs.sort()
 
 ## Init dataset and dataset loader.
