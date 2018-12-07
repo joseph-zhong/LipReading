@@ -25,8 +25,9 @@ signals as input to map to characters and words.
     - [Tutorial on Configuration files](#configuration): Tutorial on how to run executables via a config file
     - [Download Data](#download-data): Collect raw data from Youtube.
     - [Generate Dataview](#generate-dataview): Generate dataview from raw data.
-    - [Train Model](#train-model): :train: Train :train:
-      - [Examples](#examples): Example initial configurations to experiment.
+  - [Train Model](#train-model): :train: Train :train:
+    - [Examples](#examples): Example initial configurations to experiment.
+  - [Tensorboard Visualization](#tensorboard-visualization)
 - [Other Resources](#other-resources): Collection of reading material, and
   projects
   
@@ -152,21 +153,25 @@ Represent the arguments to pass to `./src/scripts/generate_dataview.py`, automat
 ./src/scripts/generate_dataview.py $(cat ./config/gen_dataview/nano)
 ```
 
-### Train Model
+## Train Model
 
 3. Train Model
 
 ```bash
-./src/scripts/train_model.py
+./src/scripts/train.py
 ```
 
-#### Examples
+### Examples
 
-##### Training on Micro
+#### Training on Micro
 
 ```bash
 ./src/scripts/train_model.py $(cat ./config/train/micro)
 ```
+
+## Tensorboard Visualization
+
+See [README_TENSORBOARD.md](README_TENSORBOARD.md)
 
 ## Other Resources
 
