@@ -8,21 +8,17 @@ This trains a specified model.
 """
 import os
 import time
-import json
-import torch
-import torch.utils.data as _data
 
 import numpy as np
-import glob
-import shutil
-import tqdm
-
-import src.utils.cmd_line as _cmd
-import src.utils.utility as _util
+import torch
+import torch.utils.data as _data
+import tensorboardX
 
 import src.data.data_loader as _data_loader
-import src.train.train_better_model as _train
 import src.models.lipreader.better_model as _better_model
+import src.train.train_better_model as _train
+import src.utils.cmd_line as _cmd
+import src.utils.utility as _util
 
 _logger = None
 
@@ -93,7 +89,7 @@ def train(
     patience=10,
     batch_size=4,
     learning_rate=1e-2,
-    enable_ctc=False,
+    enable_ctc=False
     teacher_forcing_ratio=1.0,
     grad_norm=50,
 
@@ -159,6 +155,20 @@ def train(
   encoder, decoding_step = _init_models(train_dataset.char2idx, num_layers, frame_dim, hidden_size, char_dim,
     enable_ctc, rnn_type, attention_type, attn_hidden_size, bidirectional, rnn_dropout, device)
 
+  # Initialize Logging.
+  weights_dir = _util.getRelWeightsPath(data)
+  tensorboard_writer = tensorboardX.SummaryWriter(weights_dir)
+  _getSharedLogger().info("Writing Tensorboard logs to '%s'", weights_dir)
+
+  # REVIEW josephz: Multi-input support doesn't seem ready yet: https://github.com/lanpa/tensorboardX/issues/256
+  # tensorboard_writer.add_graph(encoder,
+  #   torch.autograd.Variable(
+  #     torch.tensor([torch.zeros(batch_size, 100, 68, 3), torch.zeros(batch_size,))))
+  # tensorboard_writer.add_graph(decoding_step,
+  #   torch.autograd.Variable(
+  #     torch.tensor(torch.zeros(batch_size,), torch.zeros(num_layers, batch_size, hidden_size), torch.zeros(batch_size,), torch.zeros(batch_size, 100,
+  #       hidden_size))))
+
   # Train.
   val_cers = []
   train_decoder_losses = []
@@ -186,9 +196,15 @@ def train(
       char2idx=train_dataset.char2idx,
       teacher_forcing_ratio=teacher_forcing_ratio,
       grad_norm=grad_norm)
+    print(f'\tAVG Decoder Loss: {avg_decoder_loss}')
+    print(f'\tAVG CTC Loss: {avg_ctc_loss}')
+    tensorboard_writer.add_scalar(os.path.join(data, 'avg decoder loss'), avg_decoder_loss, global_step=num_epochs)
+    tensorboard_writer.add_scalar(os.path.join(data, 'avg CTC loss'), avg_ctc_loss, global_step=num_epochs)
 
     decoder_loss, correct, count = _train.eval(encoder, decoding_step, val_loader, device, train_dataset.char2idx)
     val_cer = (count - correct).float() / count
+    print(f'\tVal CER: {val_cer}')
+    tensorboard_writer.add_scalar(os.path.join(data, 'Val CER'), val_cer, global_step=num_epochs)
 
     val_cers.append(val_cer)
     train_decoder_losses.append(avg_decoder_loss)

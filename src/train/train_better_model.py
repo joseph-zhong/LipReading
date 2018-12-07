@@ -165,10 +165,9 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
       count += (labels != char2idx[PAD]).sum().float()
 
   decoder_loss /= count
-  print(f'\ttest decoder_loss: {decoder_loss}')
+  # print(f'\ttest decoder_loss: {decoder_loss}')
 
   if use_ctc:
     ctc_loss /= len(data_loader)
-    print(f'\ttest ctc_loss: {ctc_loss}')
-  print(f'CER: {(count - correct).float() / count}')
+    # print(f'\ttest ctc_loss: {ctc_loss}')
   return decoder_loss, correct, count
