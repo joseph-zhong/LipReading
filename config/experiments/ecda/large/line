@@ -4,9 +4,10 @@
 --train_split=0.8
 --num_workers=1
 
---patience=20
---batch_size=4
+--patience=10
+--batch_size=128
 --learning_rate=3e-4
+--annealings=2
 --enable_ctc
 --teacher_forcing_ratio=1.0
 --grad_norm=50
