@@ -55,12 +55,10 @@ def getRelWeightsPath(*relPath, use_existing=True):
   if use_existing or not os.path.exists(path):
     return path
 
-  weight_count = 1
-  path = path + f'.{weight_count}'
-  while os.path.isdir(path):
+  weight_count = 0
+  while os.path.isdir(os.path.join(path, str(weight_count))):
     weight_count += 1
-    path = path[:-1 + len(str(weight_count))] + f'.{weight_count}'
-  return path
+  return os.path.join(path, str(weight_count))
 
 
 def getRelDatasetsPath(*relPath):
