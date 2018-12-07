@@ -89,7 +89,7 @@ def train(
     patience=10,
     batch_size=4,
     learning_rate=1e-2,
-    enable_ctc=False
+    enable_ctc=False,
     teacher_forcing_ratio=1.0,
     grad_norm=50,
 
