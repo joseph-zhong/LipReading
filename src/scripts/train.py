@@ -161,7 +161,7 @@ def train(
   _getSharedLogger().info("Writing Tensorboard logs to '%s'", weights_dir)
   print()
   print("Try visualizing by running the following:")
-  print(f"\ttensorboard --logdir='{weights_dir}")
+  print(f"\ttensorboard --logdir='{weights_dir}'")
   print("Then open the following URL in your local browser. "
         "\n\tIf you're running on a remote machine see `README_TENSORBOARD.md` for help...")
 
