@@ -1,3 +1,5 @@
+import os
+
 from allennlp.nn.util import masked_log_softmax, masked_softmax, sort_batch_by_length
 import torch
 import torch.nn as nn
@@ -30,6 +32,7 @@ class VideoEncoder(nn.Module):
         self.bidirectional = bidirectional
         self.rnn_dropout = rnn_dropout
         self.enable_ctc = enable_ctc
+        self.best_error = -1
         if self.enable_ctc:
             self.vocab_size = vocab_size
             self.adj_vocab_size = self.vocab_size + 1
@@ -108,6 +111,16 @@ class VideoEncoder(nn.Module):
 
         return final_state
 
+    def save_best_model(self, error, file_path):
+        if error < self.best_error:
+
+            self.best_error = error
+            folder = os.path.dirname(file_path)
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            torch.save(self.state_dict(), file_path)
+            print("\tSaving best error '{}' to '{}'".format(self.best_error, file_path))
+
 class CharDecodingStep(nn.Module):
     def __init__(self, encoder: VideoEncoder, char_dim, vocab_size, char2idx, rnn_dropout=0, attention_type='none', attn_hidden_size=-1, device="cpu"):
         """
@@ -142,6 +155,8 @@ class CharDecodingStep(nn.Module):
             self.attn_proj_layer2 = nn.Linear(attn_hidden_size, 1)
         self.concat_layer = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.output_proj = nn.Linear(self.hidden_size, self.vocab_size)
+
+        self.best_error = -1
 
     def forward(self,
                 input_: torch.LongTensor,
@@ -218,3 +233,13 @@ class CharDecodingStep(nn.Module):
         output_log_probs = masked_log_softmax(output_logits, self.output_mask.expand(batch_size, self.vocab_size), dim=-1)
 
         return output_log_probs, final_state
+
+    def save_best_model(self, error, file_path):
+        if error < self.best_error:
+
+            self.best_error = error
+            folder = os.path.dirname(file_path)
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            torch.save(self.state_dict(), file_path)
+            print("\tSaving best error '{}' to '{}'".format(self.best_error, file_path))

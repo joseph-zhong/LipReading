@@ -77,6 +77,59 @@ def _init_models(
 
   return encoder, decoding_step
 
+
+def restore(net, save_file):
+  """Restores the weights from a saved file
+
+  This does more than the simple Pytorch restore. It checks that the names
+  of variables match, and if they don't doesn't throw a fit. It is similar
+  to how Caffe acts. This is especially useful if you decide to change your
+  network architecture but don't want to retrain from scratch.
+
+  Args:
+      net(torch.nn.Module): The net to restore
+      save_file(str): The file path
+  """
+
+  net_state_dict = net.state_dict()
+  restore_state_dict = torch.load(save_file)
+
+  restored_var_names = set()
+
+  print('\tRestoring:')
+  for var_name in restore_state_dict.keys():
+    if var_name in net_state_dict:
+      var_size = net_state_dict[var_name].size()
+      restore_size = restore_state_dict[var_name].size()
+      if var_size != restore_size:
+        print('\t\tShape mismatch for var', var_name, 'expected', var_size, 'got', restore_size)
+      else:
+        if isinstance(net_state_dict[var_name], torch.nn.Parameter):
+          # backwards compatibility for serialized parameters
+          net_state_dict[var_name] = restore_state_dict[var_name].data
+        try:
+          net_state_dict[var_name].copy_(restore_state_dict[var_name])
+          print(str(var_name) + ' -> \t' + str(var_size) + ' = ' + str(int(np.prod(var_size) * 4 / 10**6)) + 'MB')
+          restored_var_names.add(var_name)
+        except Exception as ex:
+          print('\t\tWhile copying the parameter named {}, whose dimensions in the model are'
+                ' {} and whose dimensions in the checkpoint are {}, ...'.format(
+            var_name, var_size, restore_size))
+          raise ex
+
+  ignored_var_names = sorted(list(set(restore_state_dict.keys()) - restored_var_names))
+  unset_var_names = sorted(list(set(net_state_dict.keys()) - restored_var_names))
+  if len(ignored_var_names) == 0:
+    print('\t\tRestored all variables')
+  else:
+    print('\t\tDid not restore:\n\t' + '\n\t'.join(ignored_var_names))
+  if len(unset_var_names) == 0:
+    print('\t\tNo new variables')
+  else:
+    print('\t\tInitialized but did not modify:\n\t' + '\n\t'.join(unset_var_names))
+
+  print('\tRestored %s' % save_file)
+
 def train(
     data="StephenColbert/medium_no_vtx1",
     labels="labels.json",
@@ -191,6 +244,9 @@ def train(
   val_cer = (val_count - val_correct).float() / val_count
   print("\tCER: ", str(val_cer))
 
+  encoder_path = os.path.join(weights_dir, "best_encoder.pth")
+  decoder_path = os.path.join(weights_dir, "best_decoder.pth")
+
   num_epochs = 0
   num_annealings = 0
 
@@ -201,8 +257,10 @@ def train(
 
     if num_epochs - best_val_cer_idx > patience:
       num_annealings += 1
-      learning_rate /= 10
+      learning_rate /= 5
       print(f'\tAnnealing to {learning_rate}')
+      restore(encoder, encoder_path)
+      restore(decoding_step, decoder_path)
 
       # Must set best val CER to here, or else this will also trigger next loop
       # if val CER does not go down.
@@ -225,11 +283,13 @@ def train(
     val_cer = (val_count - val_correct).float() / val_count
     train_cer = (train_count - train_correct).float() / train_count
 
+    encoder.save_best_model(val_cer, encoder_path)
+    decoding_step.save_best_model(val_cer, decoder_path)
+
     print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
     tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
-    tensorboard_writer.add_scalar("Learning rate", learning_rate, global_step=num_epochs)
-
+    tensorboard_writer.add_scalar(os.path.join(data, 'learning rate'), learning_rate, global_step=num_epochs)
 
     val_cers.append(val_cer)
     train_decoder_losses.append(avg_decoder_loss)
