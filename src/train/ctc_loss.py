@@ -5,7 +5,7 @@ def ctc_fallback(encoder_outputs, labels, frame_lens, label_lens, blank):
     assert len(encoder_outputs) == len(labels) == len(frame_lens) == len(label_lens)
     skipped_indices = []
     working_indices = []
-    for i, (encoder_output, label, frame_len, label_len) in enumerate(zip(encoder_outputs, labels, frame_lens, label_lens)):
+    for i in range(len(encoder_outputs)):
         if torch.isinf(F.ctc_loss(encoder_outputs[i:i+1].transpose(0, 1), labels[i:i+1], frame_lens[i:i+1], label_lens[i:i+1], blank=blank)):
             skipped_indices.append(i)
         else:
@@ -62,7 +62,7 @@ def ctc_loss(encoder_outputs, labels, frame_lens, label_lens, reduction, device)
     # nonzero_idx        1, 2,       5
     # change_points         2, 3,       6
     change_points = (frame_lens[1:] - frame_lens[:-1]).nonzero().squeeze(dim=-1) + 1
-    change_points = torch.cat([change_points, torch.LongTensor([len(frame_lens)])]).to(device)  # add last portion
+    change_points = torch.cat([change_points, torch.LongTensor([len(frame_lens)]).to(device)])  # add last portion
 
     # req 2
     prev_change_point = 0
@@ -82,7 +82,7 @@ def ctc_loss(encoder_outputs, labels, frame_lens, label_lens, reduction, device)
         # req 1
         concat_labels = torch.cat([label[:label_len] for label, label_len in zip(labels, label_lens)])
 
-        loss = F.ctc_loss(encoder_outputs.transpose(0, 1), concat_labels, frame_lens, label_lens, blank=0, reduction=reduction)
+        loss = F.ctc_loss(encoder_outputs.transpose(0, 1).cpu(), concat_labels.cpu(), frame_lens.cpu(), label_lens.cpu(), blank=0, reduction=reduction)
 
         if torch.isinf(loss):
             print('inf CTC loss occurred...')
@@ -97,7 +97,7 @@ def ctc_loss(encoder_outputs, labels, frame_lens, label_lens, reduction, device)
                                              encoder_outputs, labels, frame_lens, label_lens)
 
             concat_labels = torch.cat([label[:label_len] for label, label_len in zip(labels, label_lens)])
-            loss = F.ctc_loss(encoder_outputs.transpose(0, 1), concat_labels, frame_lens, label_lens, blank=0, reduction=reduction)
+            loss = F.ctc_loss(encoder_outputs.transpose(0, 1).cpu(), concat_labels.cpu(), frame_lens.cpu(), label_lens.cpu(), blank=0, reduction=reduction)
             minibatch_size = len(working_indices)
 
         if reduction == 'mean':
