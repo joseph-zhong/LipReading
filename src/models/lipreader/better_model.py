@@ -32,7 +32,7 @@ class VideoEncoder(nn.Module):
         self.bidirectional = bidirectional
         self.rnn_dropout = rnn_dropout
         self.enable_ctc = enable_ctc
-        self.best_error = -1
+        self.best_error = 1
         if self.enable_ctc:
             self.vocab_size = vocab_size
             self.adj_vocab_size = self.vocab_size + 1
@@ -156,7 +156,7 @@ class CharDecodingStep(nn.Module):
         self.concat_layer = nn.Linear(2 * self.hidden_size, self.hidden_size)
         self.output_proj = nn.Linear(self.hidden_size, self.vocab_size)
 
-        self.best_error = -1
+        self.best_error = 1
 
     def forward(self,
                 input_: torch.LongTensor,
