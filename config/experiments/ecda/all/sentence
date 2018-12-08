@@ -5,17 +5,17 @@
 --train_split=0.8
 --num_workers=1
 
---patience=10
+--patience=15
 --batch_size=128
---learning_rate=0.1
---annealings=7
+--learning_rate=0.0001
+--annealings=5
 --enable_ctc
 --teacher_forcing_ratio=1.0
 --grad_norm=50
 
 --num_layers=1
 --frame_dim=204
---hidden_size=512
+--hidden_size=768
 --char_dim=256
 
 --rnn_type=LSTM
