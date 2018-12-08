@@ -38,9 +38,9 @@ Github [project](https://github.com/joseph-zhong/LipReading/projects/2)
 
 - [x] Download Data (926 videos)
 - [x] Build Vision Pipeline (1 week) [in review](https://github.com/joseph-zhong/LipReading/projects/2#card-14669202)
-- [ ] Build NLP Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669211)
-- [ ] Build Loss Fn and Training Pipeline (2 weeks) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669251)
-- [ ] Train :train: and Ship :ship: [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669014)
+- [x] Build NLP Pipeline (1 week) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669211)
+- [x] Build Loss Fn and Training Pipeline (2 weeks) [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669251)
+- [x] Train :train: and Ship :ship: [wip](https://github.com/joseph-zhong/LipReading/projects/2#card-14669014)
   
 ## Architecture
 
