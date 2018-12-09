@@ -19,13 +19,13 @@ class FrameEncoder(nn.Module):
         super(FrameEncoder, self).__init__()
 
         # (b, seqlen, 16, 32)
-        self.conv1 = nn.Conv2d(3, num_filters[0], kernel_size=(1, 5), padding=(0,1), stride=(1, 4), bias=False)
+        self.conv1 = nn.Conv2d(3, num_filters[0], kernel_size=(1, 5), stride=(1, 4), bias=False)
         self.bn1 = nn.BatchNorm2d(num_filters[0])
         # (b, seqlen, 4, 64)
-        self.conv2 = nn.Conv2d(num_filters[0], num_filters[1], kernel_size=(1, 5), padding=(0, 3), stride=(1, 2), bias=False)
+        self.conv2 = nn.Conv2d(num_filters[0], num_filters[1], kernel_size=(1, 5), padding=(0, 1), stride=(1, 4), bias=False)
         self.bn2 = nn.BatchNorm2d(num_filters[1])
         # (b, seqlen, 1, 128)
-        self.conv3 = nn.Conv2d(num_filters[1], num_filters[2], kernel_size=(1, 5), padding=(0,3), stride=(1, 2), bias=False)
+        self.conv3 = nn.Conv2d(num_filters[1], num_filters[2], kernel_size=(1, 5), padding=(0, 1), stride=(1, 4), bias=False)
         self.bn3 = nn.BatchNorm2d(num_filters[2])
 
         self.gamma = gamma
@@ -99,7 +99,6 @@ class VideoEncoder(nn.Module):
             frames = frames.reshape(frames.shape[0], frames.shape[1], -1)
         elif self.frame_processing == 'cnn':
             frames = self.cnn(frames)
-        print(frames.shape)
 
         # Reverse sorts the batch by unpadded seq_len.
         (sorted_frames, sorted_frame_lens,

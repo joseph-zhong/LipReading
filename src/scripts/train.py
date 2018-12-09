@@ -70,7 +70,9 @@ def _init_models(
     rnn_dropout,
     device
 ):
-  cnn = _better_model.FrameEncoder((16, 32, 64, 128, 256, 512)).to(device)
+  cnn=None
+  if frame_processing == 'cnn':
+    cnn = _better_model.FrameEncoder((32, 64, 128)).to(device)
   encoder = _better_model.VideoEncoder(cnn,
     frame_dim, hidden_size,
     frame_processing=frame_processing, rnn_type=rnn_type, num_layers=num_layers, bidirectional=bidirectional, rnn_dropout=rnn_dropout,
