@@ -132,7 +132,7 @@ def restore(net, save_file):
   print('\tRestored %s' % save_file)
 
 def train(
-    data="StephenColbert/medium_no_vtx1",
+    data="StephenColbert/2",
     labels="labels.json",
     sentence_dataset=False,
     occlussion_threshold=0.8,
@@ -143,7 +143,7 @@ def train(
     patience=10,
     batch_size=4,
     learning_rate=1e-4,
-    weight_decay=1e-4,
+    weight_decay=1e-5,
     annealings=2,
     enable_ctc=False,
     grad_norm=50,
