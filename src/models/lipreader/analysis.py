@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from src.data.data_loader import BOS, EOS
+from src.data.data_loader import BOS, EOS, PAD
 
 import itertools
 import numpy as np
@@ -79,8 +79,6 @@ def plot_confusion_matrix(cm, classes,
     else:
         print('Confusion matrix, without normalization')
 
-    print(cm)
-
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
@@ -98,7 +96,6 @@ def plot_confusion_matrix(cm, classes,
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.tight_layout()
-    plt.show()
 
 def get_data(encoder, decoding_step, data_loader, device, char2idx):
     use_ctc = encoder.enable_ctc
@@ -132,28 +129,37 @@ def get_data(encoder, decoding_step, data_loader, device, char2idx):
                                                         frame_lens, encoder_hidden_states)
                 prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)  # (batch_size, )
                 y_test.extend(list(prev_output.reshape(-1).numpy()))
+                y_pred.extend(list(labels[:,i].reshape(-1).numpy()))
     return y_test, y_pred
 
-def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx):
-    class_names = ['a', 'e', 'i', 'o', 'u',
-                   'b', 'p', 'm', 'w',
+def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx, num_epochs):
+    class_names = ['a', 'e', 'i', 'y', 'o', 'u', 'w',
+                   'b', 'p', 'm',
                    'f', 'v',
                    't', 'd', 'n', 's', 'z', 'l', 'r',
                    'j',
-                   'y',
                    'k', 'q', 'c', 'g', 'x',
                    'h']
+
+    class_names_set = set(class_names)
+
     y_test, y_pred = get_data(encoder, decoding_step, data_loader, device, char2idx)
+    filtered_y_test = []
+    filtered_y_pred = []
+    idx2char = {val: key for key, val in char2idx.items()}
+    for test, pred in zip([idx2char[x] for x in y_test], [idx2char[x] for x in y_pred]):
+        if test in class_names_set and pred in class_names_set:
+            filtered_y_test.append(test)
+            filtered_y_pred.append(pred)
 
     # Compute confusion matrix
-    cnf_matrix = confusion_matrix(y_test, y_pred)
+    cnf_matrix = confusion_matrix(filtered_y_test, filtered_y_pred, labels=class_names)
     np.set_printoptions(precision=2)
 
     # Plot non-normalized confusion matrix
     plt.figure()
     plot_confusion_matrix(cnf_matrix, classes=class_names,
                         title='Confusion matrix, without normalization')
-
     # Plot normalized confusion matrix
     plt.figure()
     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
