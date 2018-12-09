@@ -9,8 +9,10 @@
 --learning_rate=0.0001
 --annealings=5
 --enable_ctc
---teacher_forcing_ratio=1.0
 --grad_norm=50
+
+--max_tfr=1.0
+--min_tfr=0.0
 
 --num_layers=1
 --frame_dim=204
