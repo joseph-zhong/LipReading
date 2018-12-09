@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from src.data.data_loader import BOS, EOS, PAD
 from .ctc_loss import ctc_loss
 
+import src.models.lipreader.analysis as _analysis
+
 def train(encoder, decoding_step, data_loader, opt, device,
           char2idx, teacher_forcing_ratio=1, grad_norm=None):
   """
@@ -139,3 +141,37 @@ def eval(encoder, decoding_step, data_loader, device, char2idx):
     ctc_loss_ /= len(data_loader)
     # print(f'\ttest ctc_loss: {ctc_loss_}')
   return decoder_loss, correct, count
+
+
+# ANALYSIS
+def test(data, encoder, decoding_step, test_loader, device, train_dataset, test_dataset, num_epochs):
+  encoder.eval()
+  decoding_step.eval()
+  with torch.no_grad():
+    # Test CER
+    _, test_correct, test_count = eval(encoder, decoding_step, test_loader, device, train_dataset.char2idx)
+    test_cer = (test_count - test_correct).float() / test_count
+    print(f'\tTest CER: {test_cer}')
+
+    # Sample teacher forcing output
+    print('Some teacher-forcing outputs:')
+    _analysis.print_samples(encoder, decoding_step, test_loader, device, train_dataset.char2idx, max_=10)
+
+    # confusion matrix
+    print('drawing confusion matrix:')
+    try:
+      _analysis.get_confusion_matrix(data, encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
+    except:
+      print('oops something wrong happened in drawing confusion matrix')
+
+    # inference
+    print('Some student-forcing outputs with beam search:')
+    for frames, frame_lens, chars, char_lens in test_loader:
+      frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
+      frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
+      pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
+        test_dataset.char2idx, beam_width=10, max_label_len=100)
+      for gt_, pred_ in zip(gt, pred):
+        print(f'GTL\t: {gt_}')
+        print(f'Pred\t: {pred_}')
+      break

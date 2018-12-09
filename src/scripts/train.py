@@ -301,42 +301,9 @@ def train(
     print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
 
-    # ANALYSIS
-    def test():
-      encoder.eval()
-      decoding_step.eval()
-      with torch.no_grad():
-        # Test CER
-        _, test_correct, test_count = _train.eval(encoder, decoding_step, test_loader, device, train_dataset.char2idx)
-        test_cer = (test_count - test_correct).float() / test_count
-        print(f'\tTest CER: {train_cer}')
-
-        # Sample teacher forcing output
-        print('Some teacher-forcing outputs:')
-        _analysis.print_samples(encoder, decoding_step, test_loader, device, train_dataset.char2idx, max_=10)
-
-        # confusion matrix
-        print('drawing confusion matrix:')
-        try:
-          _analysis.get_confusion_matrix(data, encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
-        except:
-          print('oops something wrong happened in drawing confusion matrix')
-
-        # inference
-        print('Some student-forcing outputs with beam search:')
-        for frames, frame_lens, chars, char_lens in test_loader:
-          frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
-          frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
-          pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
-                test_dataset.char2idx, beam_width=10, max_label_len=100)
-          for gt_, pred_ in zip(gt, pred):
-            print(f'GTL\t: {gt_}')
-            print(f'Pred\t: {pred_}')
-          break
-
     if num_epochs % 10 == 0:
       print("\tTesting...")
-      test()
+      _train.test(data, encoder, decoding_step, test_loader, device, train_dataset, test_dataset, num_epochs)
     tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
     tensorboard_writer.add_scalar(os.path.join(data, 'learning rate'), learning_rate, global_step=num_epochs)
 
@@ -350,7 +317,8 @@ def train(
 
     num_epochs += 1
 
-  test()
+  # Finished training, final test.
+  _train.test(data, encoder, decoding_step, test_loader, device, train_dataset, test_dataset, num_epochs)
 
   te = time.time()
   total_time = te - ts
