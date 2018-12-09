@@ -142,11 +142,14 @@ def train(
 
     patience=10,
     batch_size=4,
-    learning_rate=1e-2,
+    learning_rate=1e-4,
     annealings=2,
     enable_ctc=False,
-    teacher_forcing_ratio=1.0,
     grad_norm=50,
+
+    tr_epochs=50,
+    max_tfr=0.9,
+    min_tfr=0.0,
 
     num_layers=1,
     frame_dim=68*3,
@@ -175,7 +178,7 @@ def train(
   :param learning_rate:
   :param annealings: Number of times to anneal learning rate before training is finished.
   :param enable_ctc:
-  :param teacher_forcing_ratio:
+  :param max_tfr:
   :param grad_norm:
   :param num_layers:
   :param frame_dim:
@@ -257,6 +260,7 @@ def train(
     print("Epoch {}:".format(num_epochs + 1))
 
     if num_epochs - best_val_cer_idx > patience:
+      # If the model does not improve after our set 'patience' number of epochs, we will reduce the learning rate.
       num_annealings += 1
       learning_rate /= 5
       print(f'\tAnnealing to {learning_rate}')
@@ -267,11 +271,16 @@ def train(
       # if val CER does not go down.
       best_val_cer_idx = num_epochs
 
+    # Apply linear teacher-forcing ratio decay.
+    curr_tfr = max(min_tfr, max_tfr - num_epochs / tr_epochs)
+    assert 0.0 <= curr_tfr <= 1.0
+    print(f'\tCurrent Teacher Forcing Ratio: {curr_tfr}')
+
     avg_decoder_loss, avg_ctc_loss = _train.train(encoder, decoding_step, train_loader,
       opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
       device=device,
       char2idx=train_dataset.char2idx,
-      teacher_forcing_ratio=teacher_forcing_ratio,
+      teacher_forcing_ratio=curr_tfr,
       grad_norm=grad_norm)
     print(f'\tAVG Decoder Loss: {avg_decoder_loss}')
     print(f'\tAVG CTC Loss: {avg_ctc_loss}')
