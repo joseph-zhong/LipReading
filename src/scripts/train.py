@@ -298,13 +298,29 @@ def train(
 
     print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
+
+    # ANALYSIS
     encoder.eval()
     decoding_step.eval()
     with torch.no_grad():
+      # CER
+      _, test_correct, test_count = _train.eval(encoder, decoding_step, test_loader, device, train_dataset.char2idx)
+      test_cer = (test_count - test_correct).float() / test_count
+      print(f'\tTest CER: {train_cer}')
+
+      # Sample teacher forcing output
+      print('Some teacher-forcing outputs:')
+      _analysis.print_samples(encoder, decoding_step, test_loader, device, train_dataset.char2idx, max_=10)
+
+      # confusion matrix
+      print('drawing confusion matrix:')
       try:
         _analysis.get_confusion_matrix(encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
       except:
         print('oops something wrong happened in drawing confusion matrix')
+
+      # inference
+      print('Some student-forcing outputs with beam search:')
       for frames, frame_lens, chars, char_lens in test_loader:
         frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
         frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)

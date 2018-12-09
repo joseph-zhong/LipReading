@@ -164,3 +164,52 @@ def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx, 
     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
                         title='Normalized confusion matrix')
     plt.savefig('{}{}'.format(int(num_epochs), '_norm_confusion_matrix.png'))
+
+def print_samples(encoder, decoding_step, data_loader, device, char2idx, max_=10):
+    """
+    prints min(max_, batch_size) ground truth + prediction pair
+    """
+    use_ctc = encoder.enable_ctc
+    encoder.eval()
+    decoding_step.eval()
+
+    with torch.no_grad():
+        for frames, frame_lens, chars, char_lens in data_loader:
+            frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
+
+            assert (chars[:,0].squeeze() == char2idx[BOS]).all()
+            assert (chars.gather(1, (char_lens - 1).unsqueeze(dim=1)).squeeze() == char2idx[EOS]).all()
+
+            labels = chars[:,1:].to(device)
+            label_lens = char_lens - 1
+            assert (labels != char2idx[PAD]).sum() == label_lens.sum()
+
+            batch_size = frames.shape[0]
+            max_label_len = label_lens.max()
+
+            batch_size = min(max_, batch_size)
+            frames, frame_lens, chars, char_lens = frames[:batch_size], frame_lens[:batch_size], chars[:batch_size], char_lens[:batch_size],
+
+            if use_ctc:
+                _, encoder_hidden_states, prev_state = encoder(frames, frame_lens)
+            else:
+                encoder_hidden_states, prev_state = encoder(frames, frame_lens)
+
+            prev_output = torch.LongTensor([char2idx[BOS]] * batch_size).to(device)
+
+            output = torch.LongTensor(batch_size, max_label_len).to(device)
+
+            for i in range(max_label_len):
+                input_ = chars[:,i]
+                output_log_probs, prev_state = decoding_step(input_, prev_state,
+                                                        frame_lens, encoder_hidden_states)
+                prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)  # (batch_size, )
+                output[:,i] = prev_output
+
+            # data: (batch_size, len)
+            idx2char = {v: k for k, v in char2idx.items()}
+            for single_output, single_label, single_len in zip(output, labels, label_lens):
+                print('GTL  : ' + ''.join([idx2char[int(idx)] for idx in single_label[:single_len]]))
+                print('Pred : ' + ''.join([idx2char[int(idx)] for idx in single_output[:single_len]]))
+
+            return
