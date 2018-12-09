@@ -143,6 +143,7 @@ def train(
     patience=10,
     batch_size=4,
     learning_rate=1e-4,
+    weight_decay=1e-4,
     annealings=2,
     enable_ctc=False,
     grad_norm=50,
@@ -277,7 +278,8 @@ def train(
     print(f'\tCurrent Teacher Forcing Ratio: {curr_tfr}')
 
     avg_decoder_loss, avg_ctc_loss = _train.train(encoder, decoding_step, train_loader,
-      opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate),
+      opt=torch.optim.Adam(list(encoder.parameters()) + list(decoding_step.parameters()), lr=learning_rate,
+          weight_decay=weight_decay),
       device=device,
       char2idx=train_dataset.char2idx,
       teacher_forcing_ratio=curr_tfr,
@@ -300,36 +302,41 @@ def train(
     print(f'\tVal CER: {val_cer}')
 
     # ANALYSIS
-    encoder.eval()
-    decoding_step.eval()
-    with torch.no_grad():
-      # CER
-      _, test_correct, test_count = _train.eval(encoder, decoding_step, test_loader, device, train_dataset.char2idx)
-      test_cer = (test_count - test_correct).float() / test_count
-      print(f'\tTest CER: {train_cer}')
+    def test():
+      encoder.eval()
+      decoding_step.eval()
+      with torch.no_grad():
+        # Test CER
+        _, test_correct, test_count = _train.eval(encoder, decoding_step, test_loader, device, train_dataset.char2idx)
+        test_cer = (test_count - test_correct).float() / test_count
+        print(f'\tTest CER: {train_cer}')
 
-      # Sample teacher forcing output
-      print('Some teacher-forcing outputs:')
-      _analysis.print_samples(encoder, decoding_step, test_loader, device, train_dataset.char2idx, max_=10)
+        # Sample teacher forcing output
+        print('Some teacher-forcing outputs:')
+        _analysis.print_samples(encoder, decoding_step, test_loader, device, train_dataset.char2idx, max_=10)
 
-      # confusion matrix
-      print('drawing confusion matrix:')
-      try:
-        _analysis.get_confusion_matrix(encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
-      except:
-        print('oops something wrong happened in drawing confusion matrix')
+        # confusion matrix
+        print('drawing confusion matrix:')
+        try:
+          _analysis.get_confusion_matrix(data, encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
+        except:
+          print('oops something wrong happened in drawing confusion matrix')
 
-      # inference
-      print('Some student-forcing outputs with beam search:')
-      for frames, frame_lens, chars, char_lens in test_loader:
-        frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
-        frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
-        pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
-              test_dataset.char2idx, beam_width=10, max_label_len=100)
-        for gt_, pred_ in zip(gt, pred):
-          print(f'GTL\t: {gt_}')
-          print(f'Pred\t: {pred_}')
-        break
+        # inference
+        print('Some student-forcing outputs with beam search:')
+        for frames, frame_lens, chars, char_lens in test_loader:
+          frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
+          frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
+          pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
+                test_dataset.char2idx, beam_width=10, max_label_len=100)
+          for gt_, pred_ in zip(gt, pred):
+            print(f'GTL\t: {gt_}')
+            print(f'Pred\t: {pred_}')
+          break
+
+    if num_epochs % 10 == 0:
+      print("\tTesting...")
+      test()
     tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
     tensorboard_writer.add_scalar(os.path.join(data, 'learning rate'), learning_rate, global_step=num_epochs)
 
@@ -342,6 +349,8 @@ def train(
       best_val_cer_idx = num_epochs
 
     num_epochs += 1
+
+  test()
 
   te = time.time()
   total_time = te - ts

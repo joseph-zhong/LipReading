@@ -1,13 +1,16 @@
+import os
 import torch
-import torch.nn.functional as F
-
 from src.data.data_loader import BOS, EOS, PAD
 
 import itertools
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from sklearn.metrics import confusion_matrix
+
+import src.utils.utility as _util
 
 def inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
           char2idx, beam_width=5, max_label_len=100):
@@ -129,7 +132,7 @@ def get_data(encoder, decoding_step, data_loader, device, char2idx):
                 y_pred.extend(list(labels[:,i].reshape(-1).cpu().numpy() if labels.is_cuda else labels[:,i].reshape(-1).numpy()))
     return y_test, y_pred
 
-def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx, num_epochs):
+def get_confusion_matrix(data, encoder, decoding_step, data_loader, device, char2idx, num_epochs):
     class_names = ['a', 'e', 'i', 'y', 'o', 'u', 'w',
                    'b', 'p', 'm',
                    'f', 'v',
@@ -154,16 +157,18 @@ def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx, 
     np.set_printoptions(precision=2)
 
     # Plot non-normalized confusion matrix
+    weights_dir = _util.getRelWeightsPath(data, use_existing=False)
+
     plt.figure(figsize=(10,10), dpi=100)
     plot_confusion_matrix(cnf_matrix, classes=class_names,
                         title='Confusion matrix, without normalization')
-    plt.savefig('{}{}'.format(int(num_epochs), '_confusion_matrix.png'))
+    plt.savefig(os.path.join(weights_dir, '{}{}'.format(int(num_epochs), '_confusion_matrix.png')))
 
     # Plot normalized confusion matrix
     plt.figure(figsize=(10,10), dpi=100)
     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
                         title='Normalized confusion matrix')
-    plt.savefig('{}{}'.format(int(num_epochs), '_norm_confusion_matrix.png'))
+    plt.savefig(os.path.join(weights_dir, '{}{}'.format(int(num_epochs), '_norm_confusion_matrix.png')))
 
 def print_samples(encoder, decoding_step, data_loader, device, char2idx, max_=10):
     """
