@@ -75,9 +75,6 @@ def plot_confusion_matrix(cm, classes,
     """
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
 
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
@@ -128,8 +125,8 @@ def get_data(encoder, decoding_step, data_loader, device, char2idx):
                 output_log_probs, prev_state = decoding_step(input_, prev_state,
                                                         frame_lens, encoder_hidden_states)
                 prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)  # (batch_size, )
-                y_test.extend(list(prev_output.reshape(-1).numpy()))
-                y_pred.extend(list(labels[:,i].reshape(-1).numpy()))
+                y_test.extend(list(prev_output.reshape(-1).cpu().numpy() if prev_output.is_cuda else prev_output.reshape(-1).numpy()))
+                y_pred.extend(list(labels[:,i].reshape(-1).cpu().numpy() if labels.is_cuda else labels[:,i].reshape(-1).numpy()))
     return y_test, y_pred
 
 def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx, num_epochs):
@@ -157,12 +154,13 @@ def get_confusion_matrix(encoder, decoding_step, data_loader, device, char2idx, 
     np.set_printoptions(precision=2)
 
     # Plot non-normalized confusion matrix
-    plt.figure()
+    plt.figure(figsize=(10,10), dpi=100)
     plot_confusion_matrix(cnf_matrix, classes=class_names,
                         title='Confusion matrix, without normalization')
+    plt.savefig('{}{}'.format(int(num_epochs), '_confusion_matrix.png'))
+
     # Plot normalized confusion matrix
-    plt.figure()
+    plt.figure(figsize=(10,10), dpi=100)
     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
                         title='Normalized confusion matrix')
-
-    plt.show()
+    plt.savefig('{}{}'.format(int(num_epochs), '_norm_confusion_matrix.png'))

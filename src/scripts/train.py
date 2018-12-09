@@ -298,20 +298,22 @@ def train(
 
     print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
-    if num_epochs % 2 == 0:
-      encoder.eval()
-      decoding_step.eval()
-      with torch.no_grad():
+    encoder.eval()
+    decoding_step.eval()
+    with torch.no_grad():
+      try:
         _analysis.get_confusion_matrix(encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
-        for frames, frame_lens, chars, char_lens in test_loader:
-          frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
-          frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
-          pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
-                test_dataset.char2idx, beam_width=10, max_label_len=100)
-          for gt_, pred_ in zip(gt, pred):
-            print(f'GTL\t: {gt_}')
-            print(f'Pred\t: {pred_}')
-          break
+      except:
+        print('oops something wrong happened in drawing confusion matrix')
+      for frames, frame_lens, chars, char_lens in test_loader:
+        frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
+        frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
+        pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
+              test_dataset.char2idx, beam_width=10, max_label_len=100)
+        for gt_, pred_ in zip(gt, pred):
+          print(f'GTL\t: {gt_}')
+          print(f'Pred\t: {pred_}')
+        break
     tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
     tensorboard_writer.add_scalar(os.path.join(data, 'learning rate'), learning_rate, global_step=num_epochs)
 
