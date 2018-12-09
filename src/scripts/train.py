@@ -19,6 +19,7 @@ import src.models.lipreader.better_model as _better_model
 import src.train.train_better_model as _train
 import src.utils.cmd_line as _cmd
 import src.utils.utility as _util
+import src.models.lipreader.analysis as _analysis
 
 _logger = None
 
@@ -200,11 +201,11 @@ def train(
 
   # Init Data.
   print("Initializing dataset '{}'".format(data))
-  train_dataset, val_dataset = _get_datasets(data, train_split, sentence_dataset,
-    threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh, include_test=False)
+  train_dataset, val_dataset, test_dataset = _get_datasets(data, train_split, sentence_dataset,
+    threshold=occlussion_threshold, labels=labels, rand=rand, refresh=refresh, include_test=True)
   train_loader = _data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
   val_loader = _data.DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
-
+  test_loader = _data.DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=_data_loader._collate_fn)
   # Init Models.
   print("Initializing model")
   encoder, decoding_step = _init_models(train_dataset.char2idx, num_layers, frame_dim, hidden_size, char_dim,
@@ -288,6 +289,19 @@ def train(
 
     print(f'\tTrain CER: {train_cer}')
     print(f'\tVal CER: {val_cer}')
+
+    encoder.eval()
+    decoding_step.eval()
+    with torch.no_grad():
+      for frames, frame_lens, chars, char_lens in test_loader:
+        frames, frame_lens, chars, char_lens = frames[:2], frame_lens[:2], chars[:2], char_lens[:2]
+        frames, frame_lens, chars, char_lens = frames.to(device), frame_lens.to(device), chars.to(device), char_lens.to(device)
+        pred, gt = _analysis.inference(encoder, decoding_step, frames, frame_lens, chars, char_lens, device,
+              test_dataset.char2idx, beam_width=10, max_label_len=100)
+        for gt_, pred_ in zip(gt, pred):
+          print(f'GTL\t: {gt_}')
+          print(f'Pred\t: {pred_}')
+        break
     tensorboard_writer.add_scalars(os.path.join(data, 'CER'), {"Train": train_cer, "Val": val_cer}, global_step=num_epochs)
     tensorboard_writer.add_scalar(os.path.join(data, 'learning rate'), learning_rate, global_step=num_epochs)
 
