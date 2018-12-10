@@ -52,11 +52,11 @@ def getRelRawPath(*relPath):
 def getRelWeightsPath(*relPath, use_existing=True):
   path = getRelDataPath("weights", *relPath)
 
+  # REVIEW josephz: This was added as a hack, but should be moved elsewhere?
   weight_count = 0
   while not use_existing and os.path.isdir(os.path.join(path, str(weight_count))):
     weight_count += 1
   return os.path.join(path, str(weight_count))
-
 
 def getRelDatasetsPath(*relPath):
   return getRelDataPath("datasets", *relPath)

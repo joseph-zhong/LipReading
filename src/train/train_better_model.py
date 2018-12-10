@@ -159,10 +159,7 @@ def test(data, encoder, decoding_step, test_loader, device, train_dataset, test_
 
     # confusion matrix
     print('drawing confusion matrix:')
-    try:
-      _analysis.get_confusion_matrix(data, encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
-    except:
-      print('oops something wrong happened in drawing confusion matrix')
+    _analysis.get_confusion_matrix(data, encoder, decoding_step, test_loader, device, test_dataset.char2idx, num_epochs)
 
     # inference
     print('Some student-forcing outputs with beam search:')

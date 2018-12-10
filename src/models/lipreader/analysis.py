@@ -157,7 +157,7 @@ def get_confusion_matrix(data, encoder, decoding_step, data_loader, device, char
     np.set_printoptions(precision=2)
 
     # Plot non-normalized confusion matrix
-    weights_dir = _util.getRelWeightsPath(data, 'tfr=1.0-0.7')
+    weights_dir = _util.getRelWeightsPath(data)
     _util.mkdirP(weights_dir)
 
     plt.figure(figsize=(10,10), dpi=100)
