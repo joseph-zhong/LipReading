@@ -72,7 +72,8 @@ def _init_models(
 ):
   cnn=None
   if frame_processing == 'cnn':
-    cnn = _better_model.FrameEncoder((32, 64, 128)).to(device)
+    # cnn = _better_model.FrameEncoderCnn((32, 64, 128)).to(device)
+    cnn = _better_model.FrameEncoderCnn2().to(device)
   encoder = _better_model.VideoEncoder(cnn,
     frame_dim, hidden_size,
     frame_processing=frame_processing, rnn_type=rnn_type, num_layers=num_layers, bidirectional=bidirectional, rnn_dropout=rnn_dropout,
@@ -150,7 +151,6 @@ def train(
     learning_rate=1e-4,
     weight_decay=1e-5,
     annealings=2,
-    weight_decay=1e-4,
     enable_ctc=False,
     grad_norm=50,
 
@@ -159,7 +159,7 @@ def train(
     min_tfr=0.0,
 
     num_layers=1,
-    frame_dim=128,
+    frame_dim=68,
     hidden_size=700,
     char_dim=300,
 

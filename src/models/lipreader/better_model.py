@@ -8,16 +8,16 @@ import torch.nn.functional as F
 from src.data.data_loader import BOS, PAD
 
 _ALLOWED_RNN_TYPES = {'LSTM', 'GRU', 'RNN'}
-_ALLOWED_FRAME_PROCESSING = {'flatten', 'cnn'}
+_ALLOWED_FRAME_PROCESSING = {'flatten', 'cnn', 'fc'}
 _ALLOWED_ATTENTION_TYPES = {'none', 'dot', 'general', '1_layer_nn', 'concat'}
 
-class FrameEncoder(nn.Module):
+class FrameEncoderCnn(nn.Module):
     def __init__(self, num_filters=(32, 64, 128), gamma=0.1):
         """
 
         """
-        super(FrameEncoder, self).__init__()
-
+        super(FrameEncoderCnn, self).__init__()
+        # inp
         # (b, seqlen, 16, 32)
         self.conv1 = nn.Conv2d(3, num_filters[0], kernel_size=(1, 5), stride=(1, 4), bias=False)
         self.bn1 = nn.BatchNorm2d(num_filters[0])
@@ -45,9 +45,36 @@ class FrameEncoder(nn.Module):
         x = x.reshape(x.shape[0], x.shape[2], x.shape[1])
         return x
 
+class FrameEncoderCnn2(nn.Module):
+    def __init__(self, gamma=0.01):
+        super(FrameEncoderCnn2, self).__init__()
+
+        # self.conv1 = nn.Conv2d(3, 1, kernel_size=(1, 3), padding=(0, 1), stride=(1, 1), bias=False)
+        # torch.nn.init.xavier_uniform(self.conv1.weight)
+        # self.bn1 = nn.BatchNorm2d(1)
+
+        self.conv1 = nn.Conv1d(68*3, 68, kernel_size=3)
+        self.bn1 = nn.BatchNorm1d(1)
+        self.gamma = gamma
+
+    def forward(self, frames: torch.FloatTensor):
+        """
+
+        :param frames: (batch, seq_len, num_lmks, lmks_dim)
+        """
+        # (batch, lmks_dim, seq_len, num_lmks)
+        # x = frames.reshape(frames.shape[0], frames.shape[3], frames.shape[1], frames.shape[2])
+        # x = F.leaky_relu(self.conv1(x), negative_slope=self.gamma)
+
+        # (batch, -1, seq_len)
+        x = frames.reshape(frames.shape[0], -1, frames.shape[1])
+        x = self.bn1(F.leaky_relu(self.conv1(x), negative_slope=self.gamma))
+        # x = x.reshape(x.shape[0], x.shape[2], x.shape[3])
+        return x
+
 class VideoEncoder(nn.Module):
     def __init__(self,
-                 cnn: FrameEncoder,
+                 frame_encoder: FrameEncoderCnn,
                  frame_dim, hidden_size, frame_processing='flatten',
                  rnn_type='LSTM', num_layers=1, bidirectional=True, rnn_dropout=0,
                  enable_ctc=False, vocab_size=-1, char2idx=None, device="cpu"):
@@ -64,7 +91,7 @@ class VideoEncoder(nn.Module):
         self.frame_dim = frame_dim
         self.hidden_size = hidden_size
         self.frame_processing = frame_processing
-        self.cnn = cnn
+        self.frame_encoder = frame_encoder
         self.rnn_type = rnn_type
         self.num_layers = num_layers
         self.bidirectional = bidirectional
@@ -98,7 +125,7 @@ class VideoEncoder(nn.Module):
         if self.frame_processing == 'flatten':
             frames = frames.reshape(frames.shape[0], frames.shape[1], -1)
         elif self.frame_processing == 'cnn':
-            frames = self.cnn(frames)
+            frames = self.frame_encoder(frames)
 
         # Reverse sorts the batch by unpadded seq_len.
         (sorted_frames, sorted_frame_lens,
