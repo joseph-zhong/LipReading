@@ -157,7 +157,11 @@ The arguments will be used from left-to-right order, so if arguments are repeate
 
 (For demonstration purposes, not a working example)
 ```bash
-./src/scripts/train.py $(cat ./config/dataset/large) $(cat ./config/train/model/small-model) $(cat ./config/train/model/rnn/lstm) ...
+./src/scripts/train.py \
+    $(cat ./config/dataset/large) \
+    $(cat ./config/train/model/small-model) \
+    $(cat ./config/train/model/rnn/lstm) \
+    ...
 ```
 
 ## Train Model
