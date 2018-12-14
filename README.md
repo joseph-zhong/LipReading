@@ -153,6 +153,13 @@ Represent the arguments to pass to `./src/scripts/generate_dataview.py`, automat
 ./src/scripts/generate_dataview.py $(cat ./config/gen_dataview/nano)
 ```
 
+The arguments will be used from left-to-right order, so if arguments are repeated, they will be overwritten by the latter settings. This allows for modularity in configuring hyperparameters.
+
+(For demonstration purposes, not a working example)
+```bash
+./src/scripts/train.py $(cat ./config/dataset/large) $(cat ./config/train/model/small-model) $(cat ./config/train/model/rnn/lstm) ...
+```
+
 ## Train Model
 
 3. Train Model
