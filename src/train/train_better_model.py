@@ -63,6 +63,8 @@ def train(encoder, decoding_step, data_loader, opt, device,
       prev_output = output_log_probs.exp().multinomial(1).squeeze(dim=-1)
 
     decoder_loss /= (labels != char2idx[PAD]).sum()
+
+    opt.zero_grad()
     # print(f'\tTraining decoder_loss: {decoder_loss}')
     decoder_loss.backward(retain_graph=use_ctc)
     avg_decoder_loss += decoder_loss.cpu().detach().numpy()
